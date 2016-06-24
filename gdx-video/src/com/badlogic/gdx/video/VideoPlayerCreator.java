@@ -117,7 +117,7 @@ public class VideoPlayerCreator {
 		  return null;
 	 }
 
-	 @SuppressWarnings("unchecked") private static void initialize () {
+	 private static void initialize () {
 		  if (videoPlayerClass != null)
 				return;
 
