@@ -59,7 +59,7 @@ public final class VideoPlayerCreator {
     }
 
     private static synchronized VideoPlayerFactory initFactory() throws VideoPlayerInitException {
-        if (videoPlayerFactory != null) {
+        if (videoPlayerFactory == null) {
             ApplicationType appType = Gdx.app.getType();
 
             String factoryClassName;
