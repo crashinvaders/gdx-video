@@ -8,8 +8,6 @@ buildscript {
     }
 }
 
-version = '0.0.1-anonl'
-
 ext {
     projectGroup = "gdx-video"
 
@@ -21,6 +19,8 @@ allprojects {
     apply plugin: 'eclipse'
     apply plugin: 'idea'
     apply plugin: 'java'
+
+    version = '0.0.1-anonl'
 
     repositories {
         mavenCentral()
