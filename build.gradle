@@ -8,8 +8,10 @@ buildscript {
     }
 }
 
+version = '0.0.1-anonl'
+
 ext {
-    gdxVersion = "1.5.3"
+    gdxVersion = "1.9.3"
     projectGroup = "gdx-video"
 }
 
@@ -23,6 +25,13 @@ allprojects {
         maven { url "https://oss.sonatype.org/content/repositories/releases/" }
         maven { url "https://oss.sonatype.org/content/repositories/snapshots/" }
     }
+    
+    plugins.withType(JavaPlugin) {
+        sourceCompatibility = 1.6
+        targetCompatibility = 1.6
+        compileJava.options.encoding = 'UTF-8'
+        compileTestJava.options.encoding = 'UTF-8'
+    }    
 }
 
 project(":gdx-video") {
@@ -43,7 +52,7 @@ project(":gdx-video-desktop") {
     dependencies {
         compile project(":gdx-video")
         excluded "com.badlogicgames.gdx:gdx-jnigen:$gdxVersion"
-        compile "com.badlogicgames.gdx:gdx-backend-lwjgl:$gdxVersion"
+        compile "com.badlogicgames.gdx:gdx-backend-lwjgl3:$gdxVersion"
         compile "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
     }
 

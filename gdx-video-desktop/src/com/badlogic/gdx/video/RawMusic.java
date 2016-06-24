@@ -19,8 +19,8 @@ package com.badlogic.gdx.video;
 import java.nio.ByteBuffer;
 
 import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.backends.lwjgl.audio.OpenALAudio;
-import com.badlogic.gdx.backends.lwjgl.audio.OpenALMusic;
+import com.badlogic.gdx.backends.lwjgl3.audio.OpenALAudio;
+import com.badlogic.gdx.backends.lwjgl3.audio.OpenALMusic;
 
 /**
  * The RawMusic class extends OpenAlMusic, and retrieves it's audio from a VideoDecoder instance.
