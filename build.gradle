@@ -70,7 +70,3 @@ project(":gdx-video-android") {
 
 }
 
-
-tasks.eclipse.doLast {
-    delete ".project"
-}
