@@ -16,16 +16,7 @@
 
 package com.badlogic.gdx.video;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.Enumeration;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
-
 import com.badlogic.gdx.jnigen.JniGenSharedLibraryLoader;
-import com.badlogic.gdx.jnigen.SharedLibraryFinder;
 
 /**
  * This class manages the loading of the native libraries that wrap FFMpeg. It allows changing the path from which it
