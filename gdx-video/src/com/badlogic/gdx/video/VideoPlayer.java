@@ -16,7 +16,7 @@
 
 package com.badlogic.gdx.video;
 
-import java.io.FileNotFoundException;
+import java.io.IOException;
 
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.utils.Disposable;
@@ -43,7 +43,7 @@ public interface VideoPlayer extends Disposable {
      * @param file The file containing the video which should be played.
      * @return Whether loading the file was successful.
      */
-    boolean play(FileHandle file) throws FileNotFoundException;
+    boolean play(FileHandle file) throws IOException;
 
     /**
      * This function needs to be called every frame, so that the player can update all the buffers. Normal

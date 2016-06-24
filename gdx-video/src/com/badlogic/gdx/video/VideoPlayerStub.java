@@ -20,7 +20,7 @@ import java.io.FileNotFoundException;
 
 import com.badlogic.gdx.files.FileHandle;
 
-class VideoPlayerStub implements VideoPlayer {
+public class VideoPlayerStub implements VideoPlayer {
 
     @Override
     public boolean play(FileHandle file) throws FileNotFoundException {

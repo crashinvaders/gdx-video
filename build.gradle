@@ -11,8 +11,10 @@ buildscript {
 version = '0.0.1-anonl'
 
 ext {
-    gdxVersion = "1.9.3"
     projectGroup = "gdx-video"
+
+    gdxVersion = "1.9.3"
+    slf4jVersion = '1.7.21'
 }
 
 allprojects {
@@ -38,6 +40,7 @@ project(":gdx-video") {
 
     dependencies {
         compile "com.badlogicgames.gdx:gdx:$gdxVersion"
+        compile "org.slf4j:slf4j-api:$slf4jVersion"
     }
 
 }
@@ -53,19 +56,21 @@ project(":gdx-video-desktop") {
         compile project(":gdx-video")
         excluded "com.badlogicgames.gdx:gdx-jnigen:$gdxVersion"
         compile "com.badlogicgames.gdx:gdx-backend-lwjgl3:$gdxVersion"
-        compile "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
+
+        runtime "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
     }
 
 }
 
 project(":gdx-video-android") {
+    configurations { natives }
 
     dependencies {
         compile project(":gdx-video")
         compile files("libs/android-4.4.jar")
         compile "com.badlogicgames.gdx:gdx-backend-android:$gdxVersion"
-        compile "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-armeabi"
-        compile "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-armeabi-v7a"
+
+        natives "com.badlogicgames.gdx:gdx-platform:$gdxVersion"
     }
 
 }

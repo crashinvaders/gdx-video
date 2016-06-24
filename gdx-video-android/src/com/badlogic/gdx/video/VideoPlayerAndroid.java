@@ -29,10 +29,10 @@ import android.media.MediaPlayer.OnErrorListener;
 import android.media.MediaPlayer.OnPreparedListener;
 import android.opengl.GLES11Ext;
 import android.opengl.GLES20;
-import android.os.Handler;
-import android.os.Looper;
-import android.util.Log;
 import android.view.Surface;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.badlogic.gdx.Files.FileType;
 import com.badlogic.gdx.Gdx;
@@ -53,13 +53,16 @@ import com.badlogic.gdx.utils.viewport.Viewport;
  */
 public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener {
 
+    private static final Logger LOG = LoggerFactory.getLogger(VideoPlayerAndroid.class);
+
     private static final String ATTRIBUTE_TEXCOORDINATE = ShaderProgram.TEXCOORD_ATTRIBUTE + "0";
     private static final String VARYING_TEXCOORDINATE = "varTexCoordinate";
     private static final String UNIFORM_TEXTURE = "texture";
     private static final String UNIFORM_CAMERATRANSFORM = "camTransform";
 
 	//@formatter:off
-    String vertexShaderCode = "attribute highp vec4 a_position; \n" +
+    private static final String VERTEX_SHADER_CODE =
+        "attribute highp vec4 a_position; \n" +
 		"attribute highp vec2 " + ATTRIBUTE_TEXCOORDINATE + ";" +
 		"uniform highp mat4 " + UNIFORM_CAMERATRANSFORM + ";" +
 		"varying highp vec2 " + VARYING_TEXCOORDINATE + ";" +
@@ -69,7 +72,8 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 		" varTexCoordinate = " + ATTRIBUTE_TEXCOORDINATE + ";\n" +
 		"} \n";
 
-	String fragmentShaderCode = "#extension GL_OES_EGL_image_external : require\n" +
+    private static final String FRAGMENT_SHADER_CODE =
+        "#extension GL_OES_EGL_image_external : require\n" +
 		"uniform samplerExternalOES " + UNIFORM_TEXTURE + ";" +
 		"varying highp vec2 " + VARYING_TEXCOORDINATE + ";" +
 		"void main()                 \n" +
@@ -78,97 +82,72 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 		"}";
     //@formatter:on
 
-    private ShaderProgram shader;
-    private int[] textures = new int[1];
-    private SurfaceTexture videoTexture;
+    private final ShaderProgram shader;
+    private final int[] textures = new int[1];
+    private final SurfaceTexture videoTexture;
+    private final MediaPlayer player;
 
-    private MediaPlayer player;
+    private final Camera cam;
+    private final Mesh mesh;
+    private final int primitiveType;
+
+    private Viewport viewport;
+    private boolean customMesh;
+
+    private VideoSizeListener sizeListener;
+    private CompletionListener completionListener;
+
     private boolean prepared = false;
     private boolean frameAvailable = false;
     private boolean done = false;
-
-    private Viewport viewport;
-    private Camera cam;
-    private Mesh mesh;
-
-    private boolean customMesh = false;
-
-    VideoSizeListener sizeListener;
-    CompletionListener completionListener;
-    private int primitiveType = GL20.GL_TRIANGLES;
-
     private float currentVolume = 1.0f;
-
-    /**
-     * Used for sending mediaplayer tasks to the Main Looper
-     */
-    private static Handler handler;
-
-    /**
-     * Lock used for waiting if the player was not yet created.
-     */
-    Object lock = new Object();
 
     public VideoPlayerAndroid() {
         this(new FitViewport(Gdx.graphics.getWidth(), Gdx.graphics.getHeight()));
     }
 
     public VideoPlayerAndroid(Viewport viewport) {
-        shader = new ShaderProgram(vertexShaderCode, fragmentShaderCode);
-        setupRenderTexture();
+        this(viewport.getCamera(), createDefaultMesh(), GL20.GL_TRIANGLES);
 
+        this.customMesh = false;
         this.viewport = viewport;
-        cam = viewport.getCamera();
-        mesh = new Mesh(true, 4, 6, VertexAttribute.Position(), VertexAttribute.TexCoords(0));
-        // @formatter:off
-        mesh.setVertices(new float[] { 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0 });
-        // @formatter:on
-        mesh.setIndices(new short[] { 0, 1, 2, 2, 3, 0 });
-
-        initializeMediaPlayer();
     }
 
     public VideoPlayerAndroid(Camera cam, Mesh mesh, int primitiveType) {
         this.cam = cam;
         this.mesh = mesh;
         this.primitiveType = primitiveType;
-        customMesh = true;
-        setupRenderTexture();
 
-        initializeMediaPlayer();
+        customMesh = true;
+
+        shader = new ShaderProgram(VERTEX_SHADER_CODE, FRAGMENT_SHADER_CODE);
+
+        // Generate the actual texture
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
+        GLES20.glGenTextures(1, textures, 0);
+        GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, textures[0]);
+
+        videoTexture = new SurfaceTexture(textures[0]);
+        videoTexture.setOnFrameAvailableListener(this);
+
+        player = new MediaPlayer();
     }
 
-    private void initializeMediaPlayer() {
-        if (handler == null) handler = new Handler(Looper.getMainLooper());
-
-        handler.post(new Runnable() {
-            @Override
-            public void run() {
-                synchronized (lock) {
-                    player = new MediaPlayer();
-                    lock.notify();
-                }
-            }
-        });
+    private static Mesh createDefaultMesh() {
+        Mesh mesh = new Mesh(true, 4, 6, VertexAttribute.Position(), VertexAttribute.TexCoords(0));
+        mesh.setVertices(new float[] {
+                0, 0, 0, 0, 1,
+                0, 0, 0, 1, 1,
+                0, 0, 0, 1, 0,
+                0, 0, 0, 0, 0 });
+        mesh.setIndices(new short[] { 0, 1, 2, 2, 3, 0 });
+        return mesh;
     }
 
     @Override
-    public boolean play(final FileHandle file) throws FileNotFoundException {
+    public boolean play(final FileHandle file) throws IOException {
         if (!file.exists()) {
-            throw new FileNotFoundException("Could not find file: " + file.path());
-        }
-
-        // Wait for the player to be created. (If the Looper thread is busy,
-        if (player == null) {
-            synchronized (lock) {
-                while (player == null) {
-                    try {
-                        lock.wait();
-                    } catch (InterruptedException e) {
-                        return false;
-                    }
-                }
-            }
+            throw new FileNotFoundException("Could not find file: " + file);
         }
 
         player.reset();
@@ -177,23 +156,28 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
         player.setOnPreparedListener(new OnPreparedListener() {
             @Override
             public void onPrepared(MediaPlayer mp) {
-                float x = -mp.getVideoWidth() / 2;
-                float y = -mp.getVideoHeight() / 2;
-                float width = mp.getVideoWidth();
-                float height = mp.getVideoHeight();
+                final float width = mp.getVideoWidth();
+                final float height = mp.getVideoHeight();
+                float x = -width / 2;
+                float y = -height / 2;
 
                 // @formatter:off
-                mesh.setVertices(new float[] { x, y, 0, 0, 1, x + width, y, 0, 1, 1, x + width, y + height, 0,
-                        1, 0, x, y + height, 0, 0, 0 });
+                mesh.setVertices(new float[] {
+                        x, y, 0, 0, 1,
+                        x + width, y, 0, 1, 1,
+                        x + width, y + height, 0, 1, 0,
+                        x, y + height, 0, 0, 0 });
                 // @formatter:on
 
                 // set viewport world dimensions according to video dimensions and viewport type
-                viewport.setWorldSize(width, height);
                 Gdx.app.postRunnable(new Runnable() {
                     @Override
                     public void run() {
                         // force viewport update to let scaling take effect
-                        viewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+                        if (viewport != null) {
+                            viewport.setWorldSize(width, height);
+                            viewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+                        }
                     }
                 });
 
@@ -204,11 +188,12 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
                 mp.start();
             }
         });
+
         player.setOnErrorListener(new OnErrorListener() {
             @Override
             public boolean onError(MediaPlayer mp, int what, int extra) {
                 done = true;
-                Log.e("VideoPlayer", String.format("Error occured: %d, %d\n", what, extra));
+                LOG.error("Video player error: {} {}", what, extra);
                 return false;
             }
         });
@@ -223,21 +208,17 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
             }
         });
 
-        try {
-            if (file.type() == FileType.Classpath
-                    || (file.type() == FileType.Internal && !file.file().exists())) {
-                AssetManager assets = ((AndroidApplication)Gdx.app).getAssets();
-                AssetFileDescriptor descriptor = assets.openFd(file.path());
-                player.setDataSource(descriptor.getFileDescriptor(), descriptor.getStartOffset(),
-                        descriptor.getLength());
-            } else {
-                player.setDataSource(file.file().getAbsolutePath());
-            }
-            player.setSurface(new Surface(videoTexture));
-            player.prepareAsync();
-        } catch (IOException e) {
-            e.printStackTrace();
+        if (file.type() == FileType.Classpath
+                || (file.type() == FileType.Internal && !file.file().exists())) {
+            AssetManager assets = ((AndroidApplication)Gdx.app).getAssets();
+            AssetFileDescriptor descriptor = assets.openFd(file.path());
+            player.setDataSource(descriptor.getFileDescriptor(), descriptor.getStartOffset(),
+                    descriptor.getLength());
+        } else {
+            player.setDataSource(file.file().getAbsolutePath());
         }
+        player.setSurface(new Surface(videoTexture));
+        player.prepareAsync();
 
         return true;
     }
@@ -245,7 +226,6 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
     @Override
     public void resize(int width, int height) {
         if (!customMesh) {
-
             viewport.update(width, height);
         }
     }
@@ -295,16 +275,6 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
         done = true;
     }
 
-    private void setupRenderTexture() {
-        // Generate the actual texture
-        GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
-        GLES20.glGenTextures(1, textures, 0);
-        GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, textures[0]);
-
-        videoTexture = new SurfaceTexture(textures[0]);
-        videoTexture.setOnFrameAvailableListener(this);
-    }
-
     @Override
     public void onFrameAvailable(SurfaceTexture surfaceTexture) {
         synchronized (this) {
@@ -331,11 +301,15 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
     @Override
     public void dispose() {
         stop();
-        if (player != null) player.release();
+
+        if (player != null) {
+            player.release();
+        }
 
         videoTexture.detachFromGLContext();
 
         GLES20.glDeleteTextures(1, textures, 0);
+        textures[0] = 0;
 
         if (shader != null) {
             shader.dispose();

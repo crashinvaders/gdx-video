@@ -16,14 +16,10 @@
 
 package com.badlogic.gdx.video;
 
-import java.lang.reflect.InvocationTargetException;
-
 import com.badlogic.gdx.Application.ApplicationType;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Camera;
 import com.badlogic.gdx.graphics.Mesh;
-import com.badlogic.gdx.utils.reflect.ClassReflection;
-import com.badlogic.gdx.utils.reflect.ReflectionException;
 import com.badlogic.gdx.utils.viewport.Viewport;
 
 /**
@@ -32,111 +28,60 @@ import com.badlogic.gdx.utils.viewport.Viewport;
  *
  * @author Rob Bogie <rob.bogie@codepoke.net>
  */
-public class VideoPlayerCreator {
-    private static Class<? extends VideoPlayer> videoPlayerClass;
+public final class VideoPlayerCreator {
 
-    /**
-     * Creates a VideoPlayer with default rendering parameters. It will use a FitViewport which uses the video
-     * size as world height.
-     *
-     * @return A new instance of VideoPlayer
-     */
-    public static VideoPlayer createVideoPlayer() {
-        initialize();
-        if (videoPlayerClass == null) return new VideoPlayerStub();
-        try {
-            return videoPlayerClass.newInstance();
-        } catch (InstantiationException e) {
-            e.printStackTrace();
-        } catch (IllegalAccessException e) {
-            e.printStackTrace();
-        }
-        return null;
+    /** Cached platform-specific video player factory instance */
+    private static VideoPlayerFactory videoPlayerFactory;
+
+    private VideoPlayerCreator() {
     }
 
     /**
-     * Creates a VideoPlayer with the given viewport. The video's dimensions will be used to set the world
-     * size on this viewport. When using the resize method, the update method with the new size will be
-     * called. This however is not needed if the viewport is updated on some other place.
-     *
-     * @param viewport The viewport to use
-     * @return A new instance of VideoPlayer
+     * @see VideoPlayerFactory#createVideoPlayer()
      */
-    public static VideoPlayer createVideoPlayer(Viewport viewport) {
-        initialize();
-        if (videoPlayerClass == null) return new VideoPlayerStub();
-
-        try {
-            return videoPlayerClass.getConstructor(Viewport.class).newInstance(viewport);
-        } catch (InvocationTargetException e) {
-            e.printStackTrace();
-        } catch (InstantiationException e) {
-            e.printStackTrace();
-        } catch (IllegalAccessException e) {
-            e.printStackTrace();
-        } catch (NoSuchMethodException e) {
-            e.printStackTrace();
-        } catch (IllegalArgumentException e) {
-            e.printStackTrace();
-        } catch (SecurityException e) {
-            e.printStackTrace();
-        }
-        return null;
+    public static VideoPlayer createVideoPlayer() throws VideoPlayerInitException {
+        return initFactory().createVideoPlayer();
     }
 
     /**
-     * Creates a VideoPlayer with a custom Camera and mesh. When using this, the resize method of VideoPlayer
-     * will not work, and the responsibility of resizing is for the developer when using this.
-     *
-     * @param cam The camera that should be used during rendering.
-     * @param mesh A mesh used to draw the texture on.
-     * @return A new instance of VideoPlayer
+     * @see VideoPlayerFactory#createVideoPlayer(Viewport)
      */
-    public static VideoPlayer createVideoPlayer(Camera cam, Mesh mesh, int primitiveType) {
-        initialize();
-        if (videoPlayerClass == null) return new VideoPlayerStub();
-
-        try {
-            return videoPlayerClass.getConstructor(Camera.class, Mesh.class, Integer.TYPE).newInstance(cam,
-                    mesh, primitiveType);
-        } catch (InvocationTargetException e) {
-            e.printStackTrace();
-        } catch (InstantiationException e) {
-            e.printStackTrace();
-        } catch (IllegalAccessException e) {
-            e.printStackTrace();
-        } catch (NoSuchMethodException e) {
-            e.printStackTrace();
-        } catch (IllegalArgumentException e) {
-            e.printStackTrace();
-        } catch (SecurityException e) {
-            e.printStackTrace();
-        }
-        return null;
+    public static VideoPlayer createVideoPlayer(Viewport viewport) throws VideoPlayerInitException {
+        return initFactory().createVideoPlayer(viewport);
     }
 
-    private static void initialize() {
-        if (videoPlayerClass != null) return;
+    /**
+     * @see VideoPlayerFactory#createVideoPlayer(Camera, Mesh, int)
+     */
+    public static VideoPlayer createVideoPlayer(Camera cam, Mesh mesh, int primitiveType)
+            throws VideoPlayerInitException {
+        return initFactory().createVideoPlayer(cam, mesh, primitiveType);
+    }
 
-        String className = null;
-        ApplicationType type = Gdx.app.getType();
+    private static synchronized VideoPlayerFactory initFactory() throws VideoPlayerInitException {
+        if (videoPlayerFactory != null) {
+            ApplicationType appType = Gdx.app.getType();
 
-        if (type == ApplicationType.Android) {
-            if (Gdx.app.getVersion() >= 12) {
-                className = "com.badlogic.gdx.video.VideoPlayerAndroid";
-            } else {
-                Gdx.app.log("Gdx-Video", "VideoPlayer can't be used on android < API level 12");
+            String factoryClassName;
+            switch (appType) {
+            case Android:
+                factoryClassName = "com.badlogic.gdx.video.AndroidVideoPlayerFactory";
+                break;
+            case Desktop:
+                factoryClassName = "com.badlogic.gdx.video.DesktopVideoPlayerFactory";
+                break;
+            default:
+                throw new VideoPlayerInitException(
+                        "Platform is not supported by the Gdx Video Extension: " + appType);
             }
-        } else if (type == ApplicationType.Desktop) {
-            className = "com.badlogic.gdx.video.VideoPlayerDesktop";
-        } else {
-            Gdx.app.log("Gdx-Video", "Platform is not supported by the Gdx Video Extension");
-        }
 
-        try {
-            videoPlayerClass = ClassReflection.forName(className);
-        } catch (ReflectionException e) {
-            e.printStackTrace();
+            try {
+                videoPlayerFactory = (VideoPlayerFactory)Class.forName(factoryClassName).newInstance();
+            } catch (Exception e) {
+                throw new VideoPlayerInitException(
+                        "Unable to instantiate video player factory: " + factoryClassName, e);
+            }
         }
+        return videoPlayerFactory;
     }
 }
