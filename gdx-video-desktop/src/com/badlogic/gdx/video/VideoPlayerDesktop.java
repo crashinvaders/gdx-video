@@ -16,22 +16,22 @@
 
 package com.badlogic.gdx.video;
 
-import java.io.BufferedInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.Camera;
-import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Mesh;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Pixmap.Format;
 import com.badlogic.gdx.graphics.Texture;
-import com.badlogic.gdx.graphics.VertexAttribute;
 import com.badlogic.gdx.graphics.glutils.ShaderProgram;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
@@ -44,76 +44,73 @@ import com.badlogic.gdx.video.VideoDecoder.VideoDecoderBuffers;
  */
 public class VideoPlayerDesktop implements VideoPlayer {
 
+    private static final Logger LOG = LoggerFactory.getLogger(VideoPlayerDesktop.class);
+
 	 //@formatter:off
-	 private static final String vertexShader = "attribute vec4 a_position;    \n" +
+	 private static final String vertexShader =
+	     "attribute vec4 a_position;\n" +
 		 "attribute vec2 a_texCoord0;\n" +
 		 "uniform mat4 u_worldView;\n" +
-		 "varying vec2 v_texCoords;" +
-		 "void main()                  \n" +
-		 "{                            \n" +
-		 "   v_texCoords = a_texCoord0; \n" +
-		 "   gl_Position =  u_worldView * a_position;  \n" +
-		 "}                            \n";
-	 private static final String fragmentShader = "varying vec2 v_texCoords;\n" +
+		 "varying vec2 v_texCoords;\n" +
+		 "void main()\n" +
+		 "{\n" +
+		 "  v_texCoords = a_texCoord0;\n" +
+		 "  gl_Position =  u_worldView * a_position;\n" +
+		 "}";
+	 private static final String fragmentShader =
+	     "varying vec2 v_texCoords;\n" +
 		 "uniform sampler2D u_texture;\n" +
-		 "void main()                                  \n" +
-		 "{                                            \n" +
+		 "void main()\n" +
+		 "{\n" +
 		 "  gl_FragColor = texture2D(u_texture, v_texCoords);\n" +
 		 "}";
 
 	 //@formatter:on
 
-    Viewport viewport;
-    Camera cam;
+    private final Camera cam;
+    private final VideoPlayerMesh mesh;
+    private final ShaderProgram shader = new ShaderProgram(vertexShader, fragmentShader);
 
-    VideoDecoder decoder;
-    Pixmap image;
-    Texture texture;
-    RawMusic audio;
-    long startTime = 0;
-    boolean showAlreadyDecodedFrame = false;
+    private Viewport viewport;
+    private ReadableByteChannel fileChannel;
+    private VideoDecoder decoder;
+    private Pixmap image;
+    private Texture texture;
+    private RawMusic audio;
 
-    BufferedInputStream inputStream;
-    ReadableByteChannel fileChannel;
+    private FileHandle currentFile;
+    private int currentVideoWidth, currentVideoHeight;
+    private boolean showAlreadyDecodedFrame = false;
+    private boolean playing = false;
+    private boolean paused = false;
+    private float volume = 1.0f;
+    private long startTime = 0;
+    private long timeBeforePause = 0;
 
-    boolean paused = false;
-    long timeBeforePause = 0;
-
-    ShaderProgram shader = new ShaderProgram(vertexShader, fragmentShader);
-
-    Mesh mesh;
-    boolean customMesh = false;
-
-    int currentVideoWidth, currentVideoHeight;
-    VideoSizeListener sizeListener;
-    CompletionListener completionListener;
-    FileHandle currentFile;
-
-    boolean playing = false;
-    private int primitiveType = GL20.GL_TRIANGLES;
+    private VideoSizeListener sizeListener;
+    private CompletionListener completionListener;
 
     public VideoPlayerDesktop() {
         this(new FitViewport(Gdx.graphics.getWidth(), Gdx.graphics.getHeight()));
     }
 
     public VideoPlayerDesktop(Viewport viewport) {
+        this(viewport.getCamera(), new VideoPlayerMesh());
+
         this.viewport = viewport;
-
-        mesh = new Mesh(true, 4, 6, VertexAttribute.Position(), VertexAttribute.TexCoords(0));
-        mesh.setIndices(new short[] { 0, 1, 2, 2, 3, 0 });
-
-        cam = viewport.getCamera();
     }
 
     public VideoPlayerDesktop(Camera cam, Mesh mesh, int primitiveType) {
+        this(cam, VideoPlayerMesh.fromCustomMesh(mesh, primitiveType));
+    }
+
+    private VideoPlayerDesktop(Camera cam, VideoPlayerMesh mesh) {
         this.cam = cam;
         this.mesh = mesh;
-        this.primitiveType = primitiveType;
-        customMesh = true;
     }
 
     @Override
-    public boolean play(FileHandle file) throws FileNotFoundException {
+    public boolean play(FileHandle file) throws IOException {
         if (file == null) {
             return false;
         }
@@ -132,11 +129,10 @@ public class VideoPlayerDesktop implements VideoPlayer {
             stop();
         }
 
-        inputStream = file.read(1024 * 1024);
-        fileChannel = Channels.newChannel(inputStream);
+        fileChannel = Channels.newChannel(file.read(1024 * 1024));
 
         decoder = new VideoDecoder();
-        VideoDecoderBuffers buffers = null;
+        VideoDecoderBuffers buffers;
         try {
             buffers = decoder.loadStream(this, "readFileContents");
 
@@ -145,39 +141,39 @@ public class VideoPlayerDesktop implements VideoPlayer {
                 if (audioBuffer != null) {
                     audio = new RawMusic(decoder, audioBuffer, buffers.getAudioChannels(),
                             buffers.getAudioSampleRate());
+                    audio.setVolume(volume);
                 }
             } else {
                 return false;
             }
+        } catch (IOException ioe) {
+            throw ioe;
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.warn("Exception while trying to initialize the video player", e);
             return false;
         }
+
+        currentVideoWidth = buffers.getVideoWidth();
+        currentVideoHeight = buffers.getVideoHeight();
 
         if (sizeListener != null) {
             sizeListener.onVideoSize(currentVideoWidth, currentVideoHeight);
         }
 
-        image = new Pixmap(buffers.getVideoWidth(), buffers.getVideoHeight(), Format.RGB888);
+        image = new Pixmap(currentVideoWidth, currentVideoHeight, Format.RGB888);
 
-        float x = -buffers.getVideoWidth() / 2;
-        float y = -buffers.getVideoHeight() / 2;
-        float width = buffers.getVideoWidth();
-        float height = buffers.getVideoHeight();
+        mesh.setVideoSize(currentVideoWidth, currentVideoHeight);
 
-        // @formatter:off
-        if (!customMesh) mesh.setVertices(new float[] { x, y, 0, 0, 1, x + width, y, 0, 1, 1, x + width,
-                y + height, 0, 1, 0, x, y + height, 0, 0, 0 });
-        // @formatter:on
-
-        if (viewport != null) viewport.setWorldSize(width, height);
+        if (viewport != null) {
+            viewport.setWorldSize(currentVideoWidth, currentVideoHeight);
+        }
         playing = true;
         return true;
     }
 
     @Override
     public void resize(int width, int height) {
-        if (!customMesh) {
+        if (viewport != null) {
             viewport.update(width, height);
         }
     }
@@ -194,7 +190,7 @@ public class VideoPlayerDesktop implements VideoPlayer {
             buffer.rewind();
             return fileChannel.read(buffer);
         } catch (IOException e) {
-            e.printStackTrace();
+            LOG.warn("Error reading video data from file: {}", currentFile, e);
         }
         return 0;
     }
@@ -254,7 +250,7 @@ public class VideoPlayerDesktop implements VideoPlayer {
         shader.begin();
         shader.setUniformMatrix("u_worldView", cam.combined);
         shader.setUniformi("u_texture", 0);
-        mesh.render(shader, primitiveType);
+        mesh.render(shader);
         shader.end();
     }
 
@@ -292,13 +288,13 @@ public class VideoPlayerDesktop implements VideoPlayer {
             decoder.dispose();
             decoder = null;
         }
-        if (inputStream != null) {
+        if (fileChannel != null) {
             try {
-                inputStream.close();
+                fileChannel.close();
             } catch (IOException e) {
-                e.printStackTrace();
+                LOG.warn("Exception while closing file channel", e);
             }
-            inputStream = null;
+            fileChannel = null;
         }
 
         startTime = 0;
@@ -327,7 +323,7 @@ public class VideoPlayerDesktop implements VideoPlayer {
     public void dispose() {
         stop();
 
-        if (!customMesh && mesh != null) {
+        if (mesh != null) {
             mesh.dispose();
         }
     }
@@ -359,11 +355,15 @@ public class VideoPlayerDesktop implements VideoPlayer {
 
     @Override
     public void setVolume(float volume) {
-        audio.setVolume(volume);
+        this.volume = volume;
+
+        if (audio != null) {
+            audio.setVolume(volume);
+        }
     }
 
     @Override
     public float getVolume() {
-        return audio.getVolume();
+        return volume;
     }
 }

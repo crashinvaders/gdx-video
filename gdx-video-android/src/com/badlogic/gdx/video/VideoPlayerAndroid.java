@@ -19,6 +19,19 @@ package com.badlogic.gdx.video;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.badlogic.gdx.Files.FileType;
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.backends.android.AndroidApplication;
+import com.badlogic.gdx.files.FileHandle;
+import com.badlogic.gdx.graphics.Camera;
+import com.badlogic.gdx.graphics.Mesh;
+import com.badlogic.gdx.graphics.glutils.ShaderProgram;
+import com.badlogic.gdx.utils.viewport.FitViewport;
+import com.badlogic.gdx.utils.viewport.Viewport;
+
 import android.content.res.AssetFileDescriptor;
 import android.content.res.AssetManager;
 import android.graphics.SurfaceTexture;
@@ -29,22 +42,8 @@ import android.media.MediaPlayer.OnErrorListener;
 import android.media.MediaPlayer.OnPreparedListener;
 import android.opengl.GLES11Ext;
 import android.opengl.GLES20;
+import android.os.Looper;
 import android.view.Surface;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.badlogic.gdx.Files.FileType;
-import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.backends.android.AndroidApplication;
-import com.badlogic.gdx.files.FileHandle;
-import com.badlogic.gdx.graphics.Camera;
-import com.badlogic.gdx.graphics.GL20;
-import com.badlogic.gdx.graphics.Mesh;
-import com.badlogic.gdx.graphics.VertexAttribute;
-import com.badlogic.gdx.graphics.glutils.ShaderProgram;
-import com.badlogic.gdx.utils.viewport.FitViewport;
-import com.badlogic.gdx.utils.viewport.Viewport;
 
 /**
  * Android implementation of the VideoPlayer class.
@@ -87,12 +86,10 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
     private final SurfaceTexture videoTexture;
     private final MediaPlayer player;
 
+    private final VideoPlayerMesh mesh;
     private final Camera cam;
-    private final Mesh mesh;
-    private final int primitiveType;
 
     private Viewport viewport;
-    private boolean customMesh;
 
     private VideoSizeListener sizeListener;
     private CompletionListener completionListener;
@@ -107,18 +104,18 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
     }
 
     public VideoPlayerAndroid(Viewport viewport) {
-        this(viewport.getCamera(), createDefaultMesh(), GL20.GL_TRIANGLES);
+        this(viewport.getCamera(), new VideoPlayerMesh());
 
-        this.customMesh = false;
         this.viewport = viewport;
     }
 
     public VideoPlayerAndroid(Camera cam, Mesh mesh, int primitiveType) {
+        this(cam, VideoPlayerMesh.fromCustomMesh(mesh, primitiveType));
+    }
+
+    private VideoPlayerAndroid(Camera cam, VideoPlayerMesh mesh) {
         this.cam = cam;
         this.mesh = mesh;
-        this.primitiveType = primitiveType;
-
-        customMesh = true;
 
         shader = new ShaderProgram(VERTEX_SHADER_CODE, FRAGMENT_SHADER_CODE);
 
@@ -130,18 +127,8 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
         videoTexture = new SurfaceTexture(textures[0]);
         videoTexture.setOnFrameAvailableListener(this);
 
+        Looper.prepare();
         player = new MediaPlayer();
-    }
-
-    private static Mesh createDefaultMesh() {
-        Mesh mesh = new Mesh(true, 4, 6, VertexAttribute.Position(), VertexAttribute.TexCoords(0));
-        mesh.setVertices(new float[] {
-                0, 0, 0, 0, 1,
-                0, 0, 0, 1, 1,
-                0, 0, 0, 1, 0,
-                0, 0, 0, 0, 0 });
-        mesh.setIndices(new short[] { 0, 1, 2, 2, 3, 0 });
-        return mesh;
     }
 
     @Override
@@ -158,16 +145,7 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
             public void onPrepared(MediaPlayer mp) {
                 final float width = mp.getVideoWidth();
                 final float height = mp.getVideoHeight();
-                float x = -width / 2;
-                float y = -height / 2;
-
-                // @formatter:off
-                mesh.setVertices(new float[] {
-                        x, y, 0, 0, 1,
-                        x + width, y, 0, 1, 1,
-                        x + width, y + height, 0, 1, 0,
-                        x, y + height, 0, 0, 0 });
-                // @formatter:on
+                mesh.setVideoSize(mp.getVideoWidth(), mp.getVideoHeight());
 
                 // set viewport world dimensions according to video dimensions and viewport type
                 Gdx.app.postRunnable(new Runnable() {
@@ -225,7 +203,7 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 
     @Override
     public void resize(int width, int height) {
-        if (!customMesh) {
+        if (viewport != null) {
             viewport.update(width, height);
         }
     }
@@ -249,7 +227,7 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
         GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, textures[0]);
         shader.begin();
         shader.setUniformMatrix(UNIFORM_CAMERATRANSFORM, cam.combined);
-        mesh.render(shader, primitiveType);
+        mesh.render(shader);
         shader.end();
 
         return !done;
@@ -315,7 +293,7 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
             shader.dispose();
         }
 
-        if (!customMesh && mesh != null) {
+        if (mesh != null) {
             mesh.dispose();
         }
     }
