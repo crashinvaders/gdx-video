@@ -27,14 +27,17 @@ import com.badlogic.gdx.backends.lwjgl3.audio.OpenALMusic;
  *
  * @author Rob Bogie <rob.bogie@codepoke.net>
  */
-class RawMusic extends OpenALMusic {
-    VideoDecoder decoder;
-    ByteBuffer backBuffer;
+final class RawMusic extends OpenALMusic {
+
+    private final VideoDecoder decoder;
+    private final ByteBuffer backBuffer;
 
     public RawMusic(VideoDecoder decoder, ByteBuffer buffer, int channels, int sampleRate) {
         super((OpenALAudio)Gdx.audio, null);
+
         this.decoder = decoder;
-        backBuffer = buffer;
+        this.backBuffer = buffer;
+
         setup(channels, sampleRate);
     }
 
@@ -61,7 +64,6 @@ class RawMusic extends OpenALMusic {
 
     @Override
     public void reset() {
-
     }
 
 }

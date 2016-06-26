@@ -34,12 +34,12 @@ public class VideoDecoder implements Disposable {
     private long nativePointer;
 
     public static class VideoDecoderBuffers {
-        private ByteBuffer videoBuffer;
-        private ByteBuffer audioBuffer;
-        private int videoWidth;
-        private int videoHeight;
-        private int audioChannels;
-        private int audioSampleRate;
+        private final ByteBuffer videoBuffer;
+        private final ByteBuffer audioBuffer;
+        private final int videoWidth;
+        private final int videoHeight;
+        private final int audioChannels;
+        private final int audioSampleRate;
 
         // If constructor parameters are changed, please also update the native code to call the new
         // constructor!
@@ -100,7 +100,9 @@ public class VideoDecoder implements Disposable {
      * Constructs a VideoDecoder
      */
     public VideoDecoder() {
-        if (!FfMpeg.isLoaded()) throw new IllegalStateException("The native libraries are not yet loaded!");
+        if (!FfMpeg.isLoaded()) {
+            throw new IllegalStateException("The native libraries are not yet loaded!");
+        }
         nativePointer = init();
     }
 

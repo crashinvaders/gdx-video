@@ -24,11 +24,15 @@ import com.badlogic.gdx.jnigen.JniGenSharedLibraryLoader;
  *
  * @author Rob Bogie <rob.bogie@codepoke.net>
  */
-public class FfMpeg {
+public final class FfMpeg {
+
     public static final String NATIVE_LIBRARY_NAME = "gdx-video-desktop";
 
     private static boolean loaded = false;
     private static String libraryPath;
+
+    private FfMpeg() {
+    }
 
     /**
      * This will set the path in which it tries to find the native library.
