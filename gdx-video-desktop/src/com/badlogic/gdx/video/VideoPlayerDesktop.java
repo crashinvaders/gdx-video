@@ -139,6 +139,8 @@ public class VideoPlayerDesktop implements VideoPlayer {
             if (buffers != null) {
                 ByteBuffer audioBuffer = buffers.getAudioBuffer();
                 if (audioBuffer != null) {
+                    audioBuffer.position(audioBuffer.limit());
+
                     audio = new RawMusic(decoder, audioBuffer, buffers.getAudioChannels(),
                             buffers.getAudioSampleRate());
                     audio.setVolume(volume);
