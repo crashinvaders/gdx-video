@@ -25,7 +25,7 @@ allprojects {
     apply plugin: 'eclipse'
     apply plugin: 'idea'
 
-    group = 'nl.weeaboo.common'
+    group = 'nl.weeaboo.gdx.video'
     version = '0.0.2-anonl'
 
     repositories {
@@ -74,7 +74,7 @@ project(":gdx-video-desktop") {
         compile "com.badlogicgames.gdx:gdx-backend-lwjgl3:$gdxVersion"
 
         runtime "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
-        runtime ":gdx-video-desktop-natives-$version:"
+        runtime "$group:gdx-video-desktop-natives:$version:"
     }
 
 }
@@ -117,13 +117,18 @@ publishing {
             from proj.components.java            
             artifact(proj.sourceJar)            
         }
+        desktop_natives(MavenPublication) {
+            artifactId = 'gdx-video-desktop-natives'
+
+            artifact "libs/gdx-video-desktop-natives-${version}.jar"
+        }
     }
 }
 
 bintray {   
     user = System.getenv('BINTRAY_USER')
     key = System.getenv('BINTRAY_KEY')
-    publications = ['common', 'android', 'desktop']
+    publications = ['common', 'android', 'desktop', 'desktop_natives']
     pkg {
         repo = 'gdx-video'
         name = 'gdx-video'
