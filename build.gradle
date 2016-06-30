@@ -1,11 +1,17 @@
 buildscript {
     repositories {
+        jcenter()
         mavenCentral()
         mavenLocal()
     }
     dependencies {
         classpath "com.android.tools.build:gradle:0.14+"
+        classpath 'com.github.dcendents:android-maven-gradle-plugin:1.3'
     }
+}
+
+plugins {
+    id "com.jfrog.bintray" version "1.6"
 }
 
 ext {
@@ -18,22 +24,32 @@ ext {
 allprojects {
     apply plugin: 'eclipse'
     apply plugin: 'idea'
-    apply plugin: 'java'
 
+    group = 'nl.weeaboo.common'
     version = '0.0.2-anonl'
 
     repositories {
         mavenCentral()
         maven { url "https://oss.sonatype.org/content/repositories/releases/" }
         maven { url "https://oss.sonatype.org/content/repositories/snapshots/" }
+        flatDir { dirs "$rootProject.projectDir/libs" }
     }
-    
+}
+
+subprojects {
+    apply plugin: 'java'
+
     plugins.withType(JavaPlugin) {
         sourceCompatibility = 1.6
         targetCompatibility = 1.6
         compileJava.options.encoding = 'UTF-8'
         compileTestJava.options.encoding = 'UTF-8'
-    }    
+    }
+    
+    task sourceJar(type: Jar) {
+        from sourceSets.main.allJava
+        classifier "sources"
+    }
 }
 
 project(":gdx-video") {
@@ -58,6 +74,7 @@ project(":gdx-video-desktop") {
         compile "com.badlogicgames.gdx:gdx-backend-lwjgl3:$gdxVersion"
 
         runtime "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
+        runtime ":gdx-video-desktop-natives-$version:"
     }
 
 }
@@ -75,3 +92,45 @@ project(":gdx-video-android") {
 
 }
 
+apply plugin: 'maven-publish'
+
+publishing {
+    publications {
+        common(MavenPublication) {
+            artifactId = 'gdx-video'
+
+            def proj = project(":gdx-video")
+            from proj.components.java            
+            artifact(proj.sourceJar)            
+        }
+        android(MavenPublication) {
+            artifactId = 'gdx-video-android'
+
+            def proj = project(":gdx-video-android")
+            from proj.components.java            
+            artifact(proj.sourceJar)            
+        }
+        desktop(MavenPublication) {
+            artifactId = 'gdx-video-desktop'
+
+            def proj = project(":gdx-video-desktop")
+            from proj.components.java            
+            artifact(proj.sourceJar)            
+        }
+    }
+}
+
+bintray {   
+    user = System.getenv('BINTRAY_USER')
+    key = System.getenv('BINTRAY_KEY')
+    publications = ['common', 'android', 'desktop']
+    pkg {
+        repo = 'gdx-video'
+        name = 'gdx-video'
+        licenses = ['Apache-2.0']
+        vcsUrl = 'https://github.com/anonl/gdx-video.git'
+        version {
+            name = project.version
+        }
+    }
+}
