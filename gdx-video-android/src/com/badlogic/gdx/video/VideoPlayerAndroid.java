@@ -19,6 +19,18 @@ package com.badlogic.gdx.video;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 
+import android.content.res.AssetFileDescriptor;
+import android.content.res.AssetManager;
+import android.graphics.SurfaceTexture;
+import android.graphics.SurfaceTexture.OnFrameAvailableListener;
+import android.media.MediaPlayer;
+import android.media.MediaPlayer.OnCompletionListener;
+import android.media.MediaPlayer.OnErrorListener;
+import android.media.MediaPlayer.OnPreparedListener;
+import android.opengl.GLES11Ext;
+import android.opengl.GLES20;
+import android.view.Surface;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,19 +43,6 @@ import com.badlogic.gdx.graphics.Mesh;
 import com.badlogic.gdx.graphics.glutils.ShaderProgram;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
-
-import android.content.res.AssetFileDescriptor;
-import android.content.res.AssetManager;
-import android.graphics.SurfaceTexture;
-import android.graphics.SurfaceTexture.OnFrameAvailableListener;
-import android.media.MediaPlayer;
-import android.media.MediaPlayer.OnCompletionListener;
-import android.media.MediaPlayer.OnErrorListener;
-import android.media.MediaPlayer.OnPreparedListener;
-import android.opengl.GLES11Ext;
-import android.opengl.GLES20;
-import android.os.Looper;
-import android.view.Surface;
 
 /**
  * Android implementation of the VideoPlayer class.
@@ -127,7 +126,6 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
         videoTexture = new SurfaceTexture(textures[0]);
         videoTexture.setOnFrameAvailableListener(this);
 
-        Looper.prepare();
         player = new MediaPlayer();
     }
 
