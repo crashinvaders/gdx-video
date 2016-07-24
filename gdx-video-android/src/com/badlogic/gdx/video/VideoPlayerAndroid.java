@@ -18,6 +18,7 @@ package com.badlogic.gdx.video;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -93,9 +94,9 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
     private VideoSizeListener sizeListener;
     private CompletionListener completionListener;
 
-    private boolean prepared = false;
-    private boolean frameAvailable = false;
-    private boolean done = false;
+    private volatile boolean prepared = false;
+    private volatile boolean done = false;
+    private final AtomicBoolean frameAvailable = new AtomicBoolean();
     private float currentVolume = 1.0f;
 
     public VideoPlayerAndroid() {
@@ -141,24 +142,25 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
         player.setOnPreparedListener(new OnPreparedListener() {
             @Override
             public void onPrepared(MediaPlayer mp) {
-                final float width = mp.getVideoWidth();
-                final float height = mp.getVideoHeight();
-                mesh.setVideoSize(mp.getVideoWidth(), mp.getVideoHeight());
+                prepared = true;
+
+                final int width = mp.getVideoWidth();
+                final int height = mp.getVideoHeight();
 
                 // set viewport world dimensions according to video dimensions and viewport type
                 Gdx.app.postRunnable(new Runnable() {
                     @Override
                     public void run() {
+                        mesh.setVideoSize(width, height);
+
                         // force viewport update to let scaling take effect
                         if (viewport != null) {
                             viewport.setWorldSize(width, height);
-                            // Viewport is updated in resize(), so why do it here as well?
-                            // viewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+                            viewport.apply();
                         }
                     }
                 });
 
-                prepared = true;
                 if (sizeListener != null) {
                     sizeListener.onVideoSize(width, height);
                 }
@@ -215,11 +217,10 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
         if (!prepared) {
             return true;
         }
-        synchronized (this) {
-            if (frameAvailable) {
-                videoTexture.updateTexImage();
-                frameAvailable = false;
-            }
+
+        // Check if a new frame is available, and if so atomically set the flag to false
+        if (frameAvailable.compareAndSet(true, false)) {
+            videoTexture.updateTexImage();
         }
 
         // Draw texture
@@ -246,7 +247,7 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 
     @Override
     public void stop() {
-        if (player != null) {
+        if (prepared) {
             player.stop();
         }
         prepared = false;
@@ -255,9 +256,7 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 
     @Override
     public void onFrameAvailable(SurfaceTexture surfaceTexture) {
-        synchronized (this) {
-            frameAvailable = true;
-        }
+        frameAvailable.set(true);
     }
 
     @Override
