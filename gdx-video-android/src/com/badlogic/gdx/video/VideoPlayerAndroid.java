@@ -19,18 +19,6 @@ package com.badlogic.gdx.video;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 
-import android.content.res.AssetFileDescriptor;
-import android.content.res.AssetManager;
-import android.graphics.SurfaceTexture;
-import android.graphics.SurfaceTexture.OnFrameAvailableListener;
-import android.media.MediaPlayer;
-import android.media.MediaPlayer.OnCompletionListener;
-import android.media.MediaPlayer.OnErrorListener;
-import android.media.MediaPlayer.OnPreparedListener;
-import android.opengl.GLES11Ext;
-import android.opengl.GLES20;
-import android.view.Surface;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,6 +31,18 @@ import com.badlogic.gdx.graphics.Mesh;
 import com.badlogic.gdx.graphics.glutils.ShaderProgram;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
+
+import android.content.res.AssetFileDescriptor;
+import android.content.res.AssetManager;
+import android.graphics.SurfaceTexture;
+import android.graphics.SurfaceTexture.OnFrameAvailableListener;
+import android.media.MediaPlayer;
+import android.media.MediaPlayer.OnCompletionListener;
+import android.media.MediaPlayer.OnErrorListener;
+import android.media.MediaPlayer.OnPreparedListener;
+import android.opengl.GLES11Ext;
+import android.opengl.GLES20;
+import android.view.Surface;
 
 /**
  * Android implementation of the VideoPlayer class.
@@ -152,7 +152,8 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
                         // force viewport update to let scaling take effect
                         if (viewport != null) {
                             viewport.setWorldSize(width, height);
-                            viewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+                            // Viewport is updated in resize(), so why do it here as well?
+                            // viewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
                         }
                     }
                 });
@@ -225,6 +226,7 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
         GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, textures[0]);
         shader.begin();
         shader.setUniformMatrix(UNIFORM_CAMERATRANSFORM, cam.combined);
+        shader.setUniformi(UNIFORM_TEXTURE, 0);
         mesh.render(shader);
         shader.end();
 
@@ -244,7 +246,7 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 
     @Override
     public void stop() {
-        if (player != null && player.isPlaying()) {
+        if (player != null) {
             player.stop();
         }
         prepared = false;
@@ -324,7 +326,10 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 
     @Override
     public boolean isPlaying() {
-        return player.isPlaying();
+        // This used to return false between prepare and play, but that makes the result pretty much useless.
+        // In VideoPlayerDesktop, the isPlaying() method returns true from the moment play() is called up to
+        // the moment the video finished or is stopped. Let's just do that instead.
+        return !done;
     }
 
     @Override
