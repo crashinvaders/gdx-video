@@ -6,6 +6,11 @@ sourceSets {
             srcDirs = ["src/"]
         }
     }
+    test {
+        java {
+            srcDirs = ["srctest/"]
+        }
+    }
 }
 
 eclipse.project {

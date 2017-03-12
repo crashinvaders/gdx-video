@@ -16,7 +16,7 @@
 
 package com.badlogic.gdx.video;
 
-import com.badlogic.gdx.jnigen.JniGenSharedLibraryLoader;
+import com.badlogic.gdx.utils.SharedLibraryLoader;
 
 /**
  * This class manages the loading of the native libraries that wrap FFMpeg. It allows changing the path from
@@ -54,11 +54,11 @@ public final class FfMpeg {
             return true;
         }
 
-        JniGenSharedLibraryLoader libLoader;
+        SharedLibraryLoader libLoader;
         if (libraryPath == null) {
-            libLoader = new JniGenSharedLibraryLoader();
+            libLoader = new SharedLibraryLoader();
         } else {
-            libLoader = new JniGenSharedLibraryLoader(libraryPath);
+            libLoader = new SharedLibraryLoader(libraryPath);
         }
 
         try {
