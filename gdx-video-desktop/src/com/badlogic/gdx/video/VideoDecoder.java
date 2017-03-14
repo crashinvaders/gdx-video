@@ -49,7 +49,7 @@ public class VideoDecoder implements Disposable {
             this.audioBuffer = audioBuffer;
             this.videoWidth = videoWidth;
             this.videoHeight = videoHeight;
-            this.audioChannels = audioChannels;
+            this.audioChannels = 2; // Workaround for issue #???, decoder always uses 2 channels regardless of source
             this.audioSampleRate = audioSampleRate;
         }
 
