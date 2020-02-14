@@ -100,7 +100,7 @@ public interface VideoPlayer extends Disposable {
     /**
      * This will return the width of the currently playing video.
      * <p/>
-     * This function cannot be called until the {@link VideoSizeListener} has been called for the currently
+     * This function returns 0 until the {@link VideoSizeListener} has been called for the currently
      * playing video. If this callback has not been set, a good alternative is to wait until the
      * {@link #isBuffered} function returns true, which guarantees the availability of the videoSize.
      *
@@ -111,7 +111,7 @@ public interface VideoPlayer extends Disposable {
     /**
      * This will return the height of the currently playing video.
      * <p/>
-     * This function cannot be called until the {@link VideoSizeListener} has been called for the currently
+     * This function returns 0 until the {@link VideoSizeListener} has been called for the currently
      * playing video. If this callback has not been set, a good alternative is to wait until the
      * {@link #isBuffered} function returns true, which guarantees the availability of the videoSize.
      *

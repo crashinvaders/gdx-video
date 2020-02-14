@@ -128,19 +128,19 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
                 final int width = mp.getVideoWidth();
                 final int height = mp.getVideoHeight();
 
-                // set viewport world dimensions according to video dimensions and viewport type
-                Gdx.app.postRunnable(new Runnable() {
-                    @Override
-                    public void run() {
-                        mesh.updateDimensions(width, height);
-
-//                        // force viewport update to let scaling take effect
-//                        if (viewport != null) {
-//                            viewport.setWorldSize(width, height);
-//                            viewport.apply();
-//                        }
-                    }
-                });
+//                // set viewport world dimensions according to video dimensions and viewport type
+//                Gdx.app.postRunnable(new Runnable() {
+//                    @Override
+//                    public void run() {
+//                        mesh.updateDimensions(width, height);
+//
+////                        // force viewport update to let scaling take effect
+////                        if (viewport != null) {
+////                            viewport.setWorldSize(width, height);
+////                            viewport.apply();
+////                        }
+//                    }
+//                });
 
                 if (sizeListener != null) {
                     sizeListener.onVideoSize(width, height);
@@ -290,17 +290,21 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 
     @Override
     public int getVideoWidth() {
-        if (!prepared) {
-            throw new IllegalStateException("Can't get width when video is not yet buffered!");
-        }
+//        if (!prepared) {
+//            throw new IllegalStateException("Can't get width when video is not yet buffered!");
+//        }
+        if (!prepared) return 0;
+
         return player.getVideoWidth();
     }
 
     @Override
     public int getVideoHeight() {
-        if (!prepared) {
-            throw new IllegalStateException("Can't get height when video is not yet buffered!");
-        }
+//        if (!prepared) {
+//            throw new IllegalStateException("Can't get height when video is not yet buffered!");
+//        }
+        if (!prepared) return 0;
+
         return player.getVideoHeight();
     }
 

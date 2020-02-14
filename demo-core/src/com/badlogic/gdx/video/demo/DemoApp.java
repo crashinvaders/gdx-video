@@ -6,59 +6,63 @@ import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.scenes.scene2d.Stage;
+import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane;
+import com.badlogic.gdx.scenes.scene2d.ui.Stack;
+import com.badlogic.gdx.scenes.scene2d.ui.Table;
+import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.GdxRuntimeException;
 import com.badlogic.gdx.utils.viewport.ExtendViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import com.badlogic.gdx.video.VideoPlayer;
 import com.badlogic.gdx.video.VideoPlayerCreator;
 import com.badlogic.gdx.video.VideoPlayerInitException;
+import com.badlogic.gdx.video.VideoPlayerWidget;
 
+import java.awt.dnd.DropTarget;
 import java.io.IOException;
 
 public class DemoApp extends ApplicationAdapter {
 
-    private Batch batch;
-    private Texture texture;
-    private VideoPlayer videoPlayer0;
-    private VideoPlayer videoPlayer1;
-    private Viewport viewport;
+    private Stage stage;
 
     @Override
     public void create() {
         super.create();
+        stage = new Stage(new ExtendViewport(1280f, 720f));
+        Gdx.app.getInput().setInputProcessor(stage);
 
-        viewport = new ExtendViewport(1280f, 720f);
-        batch = new SpriteBatch();
-        texture = new Texture(Gdx.files.internal("image0.png"));
+        // Stage views.
+        {
+            Stack rootView = new Stack();
+            rootView.setFillParent(true);
+            stage.addActor(rootView);
 
-        try {
-            videoPlayer0 = VideoPlayerCreator.createVideoPlayer();
-            videoPlayer0.play(Gdx.files.internal("video0.webm"));
-            videoPlayer1 = VideoPlayerCreator.createVideoPlayer();
-            videoPlayer1.play(Gdx.files.internal("video1.webm"));
-        } catch (IOException | VideoPlayerInitException e) {
-            throw new GdxRuntimeException(e);
+            Table table = new Table();
+            table.align(Align.center);
+            table.add(new VideoPlayerWidget(Gdx.files.internal("video0.webm"))).size(640f, 360f).fill();
+            table.row();
+            table.add().height(720f);
+            table.row();
+            table.add(new VideoPlayerWidget(Gdx.files.internal("video1.webm"))).size(640f, 360f).fill();
+            rootView.addActor(table);
+
+            ScrollPane scrollPane = new ScrollPane(table);
+            scrollPane.setScrollingDisabled(true, false);
+            rootView.add(scrollPane);
         }
     }
 
     @Override
     public void dispose() {
         super.dispose();
-
-        videoPlayer0.dispose();
-        videoPlayer1.dispose();
-        texture.dispose();
-        batch.dispose();
+        stage.dispose();
     }
 
     @Override
     public void resize(int width, int height) {
         super.resize(width, height);
-
-        viewport.update(width, height, true);
-        videoPlayer0.setProjectionMatrix(viewport.getCamera().combined);
-        videoPlayer1.setProjectionMatrix(viewport.getCamera().combined);
-        batch.setProjectionMatrix(viewport.getCamera().combined);
+        stage.getViewport().update(width, height, true);
     }
 
     @Override
@@ -67,15 +71,7 @@ public class DemoApp extends ApplicationAdapter {
         Gdx.gl.glClearColor(0.2f, 0.2f, 0.2f, 1f);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
-        if (videoPlayer0.isBuffered()) {
-            videoPlayer0.render(0f, 0f, 640f, 360f);
-        }
-        if (videoPlayer1.isBuffered()) {
-            videoPlayer1.render(640f, 0f, 640f, 360f);
-        }
-
-        batch.begin();
-        batch.draw(texture, 0f, 0f);
-        batch.end();
+        stage.act();
+        stage.draw();
     }
 }
