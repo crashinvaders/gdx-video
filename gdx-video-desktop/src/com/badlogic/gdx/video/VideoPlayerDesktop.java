@@ -16,26 +16,21 @@
 
 package com.badlogic.gdx.video;
 
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.Channels;
-import java.nio.channels.ReadableByteChannel;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.files.FileHandle;
-import com.badlogic.gdx.graphics.Camera;
 import com.badlogic.gdx.graphics.Mesh;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Pixmap.Format;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.glutils.ShaderProgram;
-import com.badlogic.gdx.utils.viewport.FitViewport;
-import com.badlogic.gdx.utils.viewport.Viewport;
+import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.video.VideoDecoder.VideoDecoderBuffers;
+
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.Channels;
+import java.nio.channels.ReadableByteChannel;
 
 /**
  * Desktop implementation of the VideoPlayer
@@ -43,35 +38,28 @@ import com.badlogic.gdx.video.VideoDecoder.VideoDecoderBuffers;
  * @author Rob Bogie <rob.bogie@codepoke.net>
  */
 public class VideoPlayerDesktop implements VideoPlayer {
+    private static final String TAG = VideoPlayerDesktop.class.getSimpleName();
 
-    private static final Logger LOG = LoggerFactory.getLogger(VideoPlayerDesktop.class);
+	private static final String vertexShader =
+            "attribute vec4 a_position;\n" +
+            "attribute vec2 a_texCoord0;\n" +
+            "varying vec2 v_texCoords;\n" +
+            "uniform mat4 u_projTrans;\n" +
+            "void main() {\n" +
+            "  v_texCoords = a_texCoord0;\n" +
+            "  gl_Position = u_projTrans * a_position;\n" +
+            "}";
+    private static final String fragmentShader =
+            "varying vec2 v_texCoords;\n" +
+            "uniform sampler2D u_texture;\n" +
+            "void main() {\n" +
+            "  gl_FragColor = texture2D(u_texture, v_texCoords);\n" +
+            "}";
 
-	 //@formatter:off
-	 private static final String vertexShader =
-	     "attribute vec4 a_position;\n" +
-		 "attribute vec2 a_texCoord0;\n" +
-		 "uniform mat4 u_worldView;\n" +
-		 "varying vec2 v_texCoords;\n" +
-		 "void main()\n" +
-		 "{\n" +
-		 "  v_texCoords = a_texCoord0;\n" +
-		 "  gl_Position =  u_worldView * a_position;\n" +
-		 "}";
-	 private static final String fragmentShader =
-	     "varying vec2 v_texCoords;\n" +
-		 "uniform sampler2D u_texture;\n" +
-		 "void main()\n" +
-		 "{\n" +
-		 "  gl_FragColor = texture2D(u_texture, v_texCoords);\n" +
-		 "}";
-
-	 //@formatter:on
-
-    private final Camera cam;
     private final VideoPlayerMesh mesh;
     private final ShaderProgram shader = new ShaderProgram(vertexShader, fragmentShader);
+    private final Matrix4 projectionMatrix = new Matrix4();
 
-    private Viewport viewport;
     private ReadableByteChannel fileChannel;
     private VideoDecoder decoder;
     private Pixmap image;
@@ -91,21 +79,14 @@ public class VideoPlayerDesktop implements VideoPlayer {
     private CompletionListener completionListener;
 
     public VideoPlayerDesktop() {
-        this(new FitViewport(Gdx.graphics.getWidth(), Gdx.graphics.getHeight()));
+        this(new VideoPlayerMesh());
     }
 
-    public VideoPlayerDesktop(Viewport viewport) {
-        this(viewport.getCamera(), new VideoPlayerMesh());
-
-        this.viewport = viewport;
+    public VideoPlayerDesktop(Mesh mesh, int primitiveType) {
+        this(VideoPlayerMesh.fromCustomMesh(mesh, primitiveType));
     }
 
-    public VideoPlayerDesktop(Camera cam, Mesh mesh, int primitiveType) {
-        this(cam, VideoPlayerMesh.fromCustomMesh(mesh, primitiveType));
-    }
-
-    private VideoPlayerDesktop(Camera cam, VideoPlayerMesh mesh) {
-        this.cam = cam;
+    private VideoPlayerDesktop(VideoPlayerMesh mesh) {
         this.mesh = mesh;
     }
 
@@ -151,7 +132,7 @@ public class VideoPlayerDesktop implements VideoPlayer {
         } catch (IOException ioe) {
             throw ioe;
         } catch (Exception e) {
-            LOG.warn("Exception while trying to initialize the video player", e);
+            Gdx.app.error(TAG, "Exception while trying to initialize the video player", e);
             return false;
         }
 
@@ -164,20 +145,15 @@ public class VideoPlayerDesktop implements VideoPlayer {
 
         image = new Pixmap(currentVideoWidth, currentVideoHeight, Format.RGB888);
 
-        mesh.setVideoSize(currentVideoWidth, currentVideoHeight);
+        mesh.updateDimensions(0f, 0f, currentVideoWidth, currentVideoHeight);
 
-        if (viewport != null) {
-            viewport.setWorldSize(currentVideoWidth, currentVideoHeight);
-        }
         playing = true;
         return true;
     }
 
     @Override
-    public void resize(int width, int height) {
-        if (viewport != null) {
-            viewport.update(width, height);
-        }
+    public void setProjectionMatrix(Matrix4 projectionMatrix) {
+        this.projectionMatrix.set(projectionMatrix);
     }
 
     /**
@@ -192,23 +168,23 @@ public class VideoPlayerDesktop implements VideoPlayer {
             buffer.rewind();
             return fileChannel.read(buffer);
         } catch (IOException e) {
-            LOG.warn("Error reading video data from file: {}", currentFile, e);
+            Gdx.app.error(TAG, "Error reading video data from file: " + currentFile, e);
         }
         return 0;
     }
 
     @Override
-    public boolean render() {
+    public boolean render(float x, float y, float width, float height) {
         if (decoder != null && !paused) {
             if (startTime == 0) {
-                // Since startTime is 0, this means that we should now display the first frame of the video,
-                // and set the
-                // time.
+                // Since startTime is 0, this means that we should now display the first frame of the video, and set the time.
                 startTime = System.currentTimeMillis();
                 if (audio != null) {
                     audio.play();
                 }
             }
+
+            mesh.updateDimensions(x, y, width, height);
 
             if (!showAlreadyDecodedFrame) {
                 ByteBuffer videoData = decoder.nextVideoFrame();
@@ -222,6 +198,7 @@ public class VideoPlayerDesktop implements VideoPlayer {
                         texture.dispose();
                     }
                     texture = new Texture(image);
+                    texture.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
                 } else {
                     if (completionListener != null) {
                         completionListener.onCompletionListener(currentFile);
@@ -250,7 +227,7 @@ public class VideoPlayerDesktop implements VideoPlayer {
     private void renderTexture() {
         texture.bind();
         shader.begin();
-        shader.setUniformMatrix("u_worldView", cam.combined);
+        shader.setUniformMatrix("u_projTrans", projectionMatrix);
         shader.setUniformi("u_texture", 0);
         mesh.render(shader);
         shader.end();
@@ -294,7 +271,7 @@ public class VideoPlayerDesktop implements VideoPlayer {
             try {
                 fileChannel.close();
             } catch (IOException e) {
-                LOG.warn("Exception while closing file channel", e);
+                Gdx.app.error(TAG, "Exception while closing file channel", e);
             }
             fileChannel = null;
         }

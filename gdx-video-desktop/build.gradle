@@ -1,16 +1,17 @@
-apply plugin: "java"
+apply plugin: "java-library"
 
 sourceSets {
-    main {
-        java {
-            srcDirs = ["src/"]
-        }
-    }
-    test {
-        java {
-            srcDirs = ["srctest/"]
-        }
-    }
+    main.java.srcDirs = ["src/"]
+    test.java.srcDirs = ["srctest/"]
+}
+
+dependencies {
+    compile project(":gdx-video-core")
+    compile "com.badlogicgames.gdx:gdx-backend-lwjgl3:$gdxVersion"
+    runtime "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
+    runtime "$group:gdx-video-desktop-natives:$version:"
+
+    testCompile "com.badlogicgames.gdx:gdx-jnigen:$gdxVersion"
 }
 
 eclipse.project {

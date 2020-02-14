@@ -1,0 +1,28 @@
+apply plugin: "java"
+
+sourceCompatibility = 1.7
+
+sourceSets.main.java.srcDirs = ["src"]
+sourceSets.main.resources.srcDirs += ["../demo-core/assets"]
+
+ext.mainClassName = "com.badlogic.gdx.video.demo.desktop.DemoDesktopLauncher"
+ext.assetsDir = new File("../demo-core/assets")
+
+dependencies {
+    compile project(':gdx-video-desktop')
+    compile project(':demo-core')
+    compile "com.badlogicgames.gdx:gdx-backend-lwjgl3:$gdxVersion"
+    compile "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
+}
+
+task run(dependsOn: classes, type: JavaExec) {
+    main = project.mainClassName
+    classpath = sourceSets.main.runtimeClasspath
+    standardInput = System.in
+    workingDir = project.assetsDir
+    ignoreExitValue = true
+
+    if (org.gradle.internal.os.OperatingSystem.current().isMacOsX()) {
+        jvmArgs += ['-XstartOnFirstThread']
+    }
+}

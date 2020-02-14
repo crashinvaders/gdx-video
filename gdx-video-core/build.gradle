@@ -1,0 +1,11 @@
+apply plugin: "java-library"
+
+sourceSets.main.java.srcDirs = ["src/"]
+
+dependencies {
+    compile "com.badlogicgames.gdx:gdx:$gdxVersion"
+}
+
+eclipse.project {
+    name = projectGroup + "-gdx-video-core"
+}

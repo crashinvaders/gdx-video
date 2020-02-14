@@ -1,1 +1,9 @@
-include "gdx-video", "gdx-video-desktop", "gdx-video-android"
+rootProject.name = 'gdx-video'
+
+include "gdx-video-core"
+include "gdx-video-desktop"
+include "gdx-video-android"
+
+include 'demo-core'
+include 'demo-desktop'
+include 'demo-android'

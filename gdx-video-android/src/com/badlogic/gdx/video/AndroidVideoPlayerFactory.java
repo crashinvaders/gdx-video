@@ -20,14 +20,9 @@ public class AndroidVideoPlayerFactory implements VideoPlayerFactory {
     }
 
     @Override
-    public VideoPlayer createVideoPlayer(Viewport viewport) throws VideoPlayerInitException {
-        return new VideoPlayerAndroid(viewport);
-    }
-
-    @Override
-    public VideoPlayer createVideoPlayer(Camera cam, Mesh mesh, int primitiveType)
-            throws VideoPlayerInitException {
-        return new VideoPlayerAndroid(cam, mesh, primitiveType);
+    public VideoPlayer createVideoPlayer(Mesh mesh, int primitiveType) throws VideoPlayerInitException {
+        checkAndroidVersion();
+        return new VideoPlayerAndroid(mesh, primitiveType);
     }
 
 }

@@ -1,0 +1,10 @@
+apply plugin: "java-library"
+
+sourceCompatibility = 1.7
+
+sourceSets.main.java.srcDirs = ["src"]
+
+dependencies {
+    compile project(':gdx-video-core')
+    compile "com.badlogicgames.gdx:gdx:$gdxVersion"
+}
