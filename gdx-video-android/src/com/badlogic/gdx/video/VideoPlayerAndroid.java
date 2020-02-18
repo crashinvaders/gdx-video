@@ -128,33 +128,51 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
         player.setOnPreparedListener(new OnPreparedListener() {
             @Override
             public void onPrepared(MediaPlayer mp) {
-                //TODO Make sure this call is happening on the main thread.
-                prepared = true;
+                final int videoWidth = mp.getVideoWidth();
+                final int videoHeight = mp.getVideoHeight();
 
-                if (sizeListener != null) {
-                    sizeListener.onVideoPrepared(VideoPlayerAndroid.this, mp.getVideoWidth(), mp.getVideoHeight());
-                }
+                // This call happens on the Android's main thread. We need to sync.
+                Gdx.app.postRunnable(new Runnable() {
+                    @Override
+                    public void run() {
+                        prepared = true;
+
+                        if (sizeListener != null) {
+                            sizeListener.onVideoPrepared(VideoPlayerAndroid.this, videoWidth, videoHeight);
+                        }
+                    }
+                });
             }
         });
 
         player.setOnErrorListener(new OnErrorListener() {
             @Override
-            public boolean onError(MediaPlayer mp, int what, int extra) {
-                //TODO Make sure this call is happening on the main thread.
-                done = true;
-                Gdx.app.error(TAG, "Video player error: " + what + " " + extra);
-                return false;
+            public boolean onError(MediaPlayer mp, final int what, final int extra) {
+                // This call happens on the Android's main thread. We need to sync.
+                Gdx.app.postRunnable(new Runnable() {
+                    @Override
+                    public void run() {
+                        done = true;
+                        Gdx.app.error(TAG, "Video player error: " + what + " " + extra);
+                    }
+                });
+                return true;
             }
         });
 
         player.setOnCompletionListener(new OnCompletionListener() {
             @Override
             public void onCompletion(MediaPlayer mp) {
-                //TODO Make sure this call is happening on the main thread.
-                done = true;
-                if (completionListener != null) {
-                    completionListener.onCompletionListener(VideoPlayerAndroid.this);
-                }
+                // This call happens on the Android's main thread. We need to sync.
+                Gdx.app.postRunnable(new Runnable() {
+                    @Override
+                    public void run() {
+                        done = true;
+                        if (completionListener != null) {
+                            completionListener.onCompletionListener(VideoPlayerAndroid.this);
+                        }
+                    }
+                });
             }
         });
 
