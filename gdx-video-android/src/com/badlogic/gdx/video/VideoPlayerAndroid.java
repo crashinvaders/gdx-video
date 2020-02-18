@@ -24,6 +24,8 @@ import com.badlogic.gdx.Files.FileType;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.backends.android.AndroidApplication;
 import com.badlogic.gdx.files.FileHandle;
+import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Mesh;
 import com.badlogic.gdx.graphics.glutils.ShaderProgram;
 
@@ -92,7 +94,7 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
     }
 
     public VideoPlayerAndroid(Mesh mesh, int primitiveType) {
-        this(VideoPlayerMesh.fromCustomMesh(mesh, primitiveType));
+        this(new VideoPlayerMesh(mesh, primitiveType));
     }
 
     private VideoPlayerAndroid(VideoPlayerMesh mesh) {
@@ -184,6 +186,11 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
     }
 
     @Override
+    public void setColor(Color color) {
+        mesh.setColor(color);
+    }
+
+    @Override
     public void setProjectionMatrix(Matrix4 projectionMatrix) {
         this.projectionMatrix.set(projectionMatrix);
     }
@@ -205,12 +212,16 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
         }
 
         // Draw texture
-        GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, textures[0]);
-        shader.begin();
-        shader.setUniformMatrix(UNIFORM_PROJ_TRANSFORM, projectionMatrix);
-        shader.setUniformi(UNIFORM_TEXTURE, 0);
-        mesh.render(shader);
-        shader.end();
+        {
+            Gdx.gl.glEnable(GL20.GL_BLEND);
+            Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+            GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, textures[0]);
+            shader.begin();
+            shader.setUniformMatrix(UNIFORM_PROJ_TRANSFORM, projectionMatrix);
+            shader.setUniformi(UNIFORM_TEXTURE, 0);
+            mesh.render(shader);
+            shader.end();
+        }
 
         return !done;
     }

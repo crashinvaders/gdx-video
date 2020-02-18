@@ -19,6 +19,7 @@ package com.badlogic.gdx.video;
 import java.io.FileNotFoundException;
 
 import com.badlogic.gdx.files.FileHandle;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.math.Matrix4;
 
 public class VideoPlayerStub implements VideoPlayer {
@@ -89,5 +90,10 @@ public class VideoPlayerStub implements VideoPlayer {
     @Override
     public float getVolume() {
         return 0;
+    }
+
+    @Override
+    public void setColor(Color color) {
+
     }
 }

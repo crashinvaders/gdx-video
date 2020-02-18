@@ -19,6 +19,7 @@ package com.badlogic.gdx.video;
 import java.io.IOException;
 
 import com.badlogic.gdx.files.FileHandle;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.utils.Disposable;
 
@@ -29,12 +30,12 @@ import com.badlogic.gdx.utils.Disposable;
  * @author Rob Bogie <rob.bogie@codepoke.net>
  */
 public interface VideoPlayer extends Disposable {
-    public interface VideoSizeListener {
-        public void onVideoSize(float width, float height);
+    interface VideoSizeListener {
+        void onVideoSize(float width, float height);
     }
 
-    public interface CompletionListener {
-        public void onCompletionListener(FileHandle file);
+    interface CompletionListener {
+        void onCompletionListener(FileHandle file);
     }
 
     /**
@@ -146,4 +147,5 @@ public interface VideoPlayer extends Disposable {
      */
     float getVolume();
 
+    void setColor(Color color);
 }

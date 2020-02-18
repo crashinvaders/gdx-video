@@ -1,6 +1,7 @@
 package com.badlogic.gdx.video;
 
 import com.badlogic.gdx.files.FileHandle;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.Widget;
@@ -9,6 +10,7 @@ import com.badlogic.gdx.utils.GdxRuntimeException;
 import java.io.IOException;
 
 public class VideoPlayerWidget extends Widget {
+    private static final Color tmpColor = new Color();
 
     private VideoPlayer videoPlayer;
     private FileHandle videoFile;
@@ -31,12 +33,21 @@ public class VideoPlayerWidget extends Widget {
         playVideoInternal(videoFile);
     }
 
+    /**
+     * The {@link com.badlogic.gdx.video.VideoPlayer} instance gets available once the actor is added to a stage.
+     * @return local {@link com.badlogic.gdx.video.VideoPlayer} instance with the provided video file initialized.
+     */
+    public VideoPlayer getVideoPlayer() {
+        return videoPlayer;
+    }
+
     @Override
     public void draw(Batch batch, float parentAlpha) {
         super.validate();
         batch.end();
 
-        //TODO Set color to videoPlayer.
+        Color col = getColor();
+        videoPlayer.setColor(tmpColor.set(col.r, col.g, col.b, col.a * parentAlpha));
 
         videoPlayer.setProjectionMatrix(batch.getProjectionMatrix());
         videoPlayer.render(getX(), getY(), getWidth(), getHeight());

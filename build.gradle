@@ -29,8 +29,8 @@ allprojects {
     apply plugin: 'eclipse'
     apply plugin: 'idea'
 
-    group = 'nl.weeaboo.gdx.video'
-    version = '1.0.0-anonl'
+    group = 'com.metaphore.gdx.video'
+    version = '0.1.0'
 
     repositories {
         mavenCentral()
@@ -38,7 +38,6 @@ allprojects {
         google()
         maven { url "https://oss.sonatype.org/content/repositories/releases/" }
         maven { url "https://oss.sonatype.org/content/repositories/snapshots/" }
-        flatDir { dirs "$rootProject.projectDir/libs" }
     }
 
 	ext {
@@ -57,9 +56,14 @@ allprojects {
 	}
 }
 
+configure([project(':gdx-video-core'), project(':gdx-video-desktop'), project(':gdx-video-android')]) {
+    apply plugin: 'maven'
+}
+
 configure(subprojects - project(':gdx-video-android') - project(':demo-android')) {
-//configure(subprojects) {
     apply plugin: 'java'
+
+//    archivesBaseName = projectName
 
     plugins.withType(JavaPlugin) {
         sourceCompatibility = 1.7
@@ -68,11 +72,33 @@ configure(subprojects - project(':gdx-video-android') - project(':demo-android')
         compileTestJava.options.encoding = 'UTF-8'
     }
 
-    task sourceJar(type: Jar) {
-        from sourceSets.main.allJava
-        classifier "sources"
+//    task sourceJar(type: Jar) {
+//        from sourceSets.main.allJava
+//        classifier "sources"
+//    }
+
+    task sourcesJar(type: Jar) {
+        classifier = 'sources'
+        from sourceSets.main.allSource
+//        from sourceSets.main.allJava
+    }
+
+    task javadocJar(type: Jar) {
+        classifier = 'javadoc'
+        from javadoc.destinationDir
+    }
+
+    artifacts {
+        archives sourcesJar
+        archives javadocJar
     }
 }
+
+// Invokes 'build' and 'install' tasks on all projects in the correct order.
+// Prefer this over 'gradle build install' when changing the version of library.
+task installAll(dependsOn: ['gdx-video-core:build', 'gdx-video-core:install',
+                            'gdx-video-desktop:build', 'gdx-video-desktop:install',
+                            'gdx-video-android:build', 'gdx-video-android:install'])
 
 //apply plugin: 'maven-publish'
 //

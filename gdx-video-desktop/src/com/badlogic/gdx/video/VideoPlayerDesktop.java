@@ -18,10 +18,8 @@ package com.badlogic.gdx.video;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.files.FileHandle;
-import com.badlogic.gdx.graphics.Mesh;
-import com.badlogic.gdx.graphics.Pixmap;
+import com.badlogic.gdx.graphics.*;
 import com.badlogic.gdx.graphics.Pixmap.Format;
-import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.glutils.ShaderProgram;
 import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.video.VideoDecoder.VideoDecoderBuffers;
@@ -33,27 +31,34 @@ import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 
 /**
- * Desktop implementation of the VideoPlayer
+ * Desktop implementation of the VideoPlayer. It's based on locally compiled FFMPEG native lib.
+ * Due to FFMPEG limitation, the only supported format is .WEBP container, VP8 video codec and OPUS audio codec.
  *
  * @author Rob Bogie <rob.bogie@codepoke.net>
+ * @author metaphore
  */
 public class VideoPlayerDesktop implements VideoPlayer {
     private static final String TAG = VideoPlayerDesktop.class.getSimpleName();
 
 	private static final String vertexShader =
-            "attribute vec4 a_position;\n" +
-            "attribute vec2 a_texCoord0;\n" +
+            "attribute vec4 "+ ShaderProgram.POSITION_ATTRIBUTE + ";\n" +
+            "attribute vec4 " + ShaderProgram.COLOR_ATTRIBUTE + ";\n" +
+            "attribute vec2 " + ShaderProgram.TEXCOORD_ATTRIBUTE + "0;\n" +
+            "varying vec4 v_color;\n" +
             "varying vec2 v_texCoords;\n" +
             "uniform mat4 u_projTrans;\n" +
             "void main() {\n" +
-            "  v_texCoords = a_texCoord0;\n" +
-            "  gl_Position = u_projTrans * a_position;\n" +
+            "  v_color = " + ShaderProgram.COLOR_ATTRIBUTE + ";\n" +
+            "  v_color.a = v_color.a * (255.0/254.0);\n" +
+            "  v_texCoords = " + ShaderProgram.TEXCOORD_ATTRIBUTE + "0;\n" +
+            "  gl_Position = u_projTrans * " + ShaderProgram.POSITION_ATTRIBUTE + ";\n" +
             "}";
     private static final String fragmentShader =
+            "varying vec4 v_color;\n" +
             "varying vec2 v_texCoords;\n" +
             "uniform sampler2D u_texture;\n" +
             "void main() {\n" +
-            "  gl_FragColor = texture2D(u_texture, v_texCoords);\n" +
+            "  gl_FragColor = v_color * texture2D(u_texture, v_texCoords);\n" +
             "}";
 
     private final VideoPlayerMesh mesh;
@@ -83,11 +88,15 @@ public class VideoPlayerDesktop implements VideoPlayer {
     }
 
     public VideoPlayerDesktop(Mesh mesh, int primitiveType) {
-        this(VideoPlayerMesh.fromCustomMesh(mesh, primitiveType));
+        this(new VideoPlayerMesh(mesh, primitiveType));
     }
 
     private VideoPlayerDesktop(VideoPlayerMesh mesh) {
         this.mesh = mesh;
+
+        if (!shader.isCompiled()) {
+            Gdx.app.error(TAG, "Error compiling shader: " + shader.getLog());
+        }
     }
 
     @Override
@@ -224,6 +233,9 @@ public class VideoPlayerDesktop implements VideoPlayer {
     }
 
     private void renderTexture() {
+        Gdx.gl.glEnable(GL20.GL_BLEND);
+        Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+
         texture.bind();
         shader.begin();
         shader.setUniformMatrix("u_projTrans", projectionMatrix);
@@ -343,5 +355,10 @@ public class VideoPlayerDesktop implements VideoPlayer {
     @Override
     public float getVolume() {
         return volume;
+    }
+
+    @Override
+    public void setColor(Color color) {
+        mesh.setColor(color);
     }
 }
