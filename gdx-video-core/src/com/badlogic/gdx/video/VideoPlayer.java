@@ -30,39 +30,47 @@ import com.badlogic.gdx.utils.Disposable;
  * @author Rob Bogie <rob.bogie@codepoke.net>
  */
 public interface VideoPlayer extends Disposable {
-    interface VideoSizeListener {
-        void onVideoSize(float width, float height);
+    interface VideoPreparedListener {
+        void onVideoPrepared(VideoPlayer videoPlayer, float width, float height);
     }
 
     interface CompletionListener {
-        void onCompletionListener(FileHandle file);
+        void onCompletionListener(VideoPlayer videoPlayer);
     }
+
+    /**
+     * Disposes the VideoPlayer and ensures all buffers and resources are invalidated and disposed.
+     */
+    @Override
+    void dispose();
 
     /**
      * This function will prepare the VideoPlayer to play the given file. If a video is already played, it
      * will be stopped, and the new video will be loaded.
      *
      * @param file The file containing the video which should be played.
-     * @return Whether loading the file was successful.
      */
-    boolean play(FileHandle file) throws IOException;
+    void prepare(final FileHandle file) throws IOException;
 
     /**
-     * This function needs to be called every frame, so that the player can update all the buffers. Normal
-     * usecase is to start rendering after {@link #isBuffered()} returns true.
+     * Checks if the video is buffered and ready to be played.
+     */
+    boolean isPrepared();
+
+    /**
+     * Starts playback of the prepared video file.
+     * Can only be called after the video get prepared (check through {@link #isPrepared()})
+     * otherwise will result in {@link IllegalStateException}.
+     */
+    void play();
+
+    /**
+     * This function needs to be called every frame, so that the player can update all the buffers.
+     * Normal usecase is to start rendering after {@link #isPrepared()} returns true.
      *
-     * @return It returns true if a new frame is being displayed, false if none available (file is finished
-     *         playing).
+     * @return It returns true if a new frame is being displayed, false if none available (file is finished playing).
      */
     boolean render(float x, float y, float width, float height);
-
-    /**
-     * Whether the buffer containing the video is completely filled. The size of the buffer is platform
-     * specific, and cannot necessarily be depended upon. Review the documentation per platform for specifics.
-     *
-     * @return buffer completely filled or not.
-     */
-    boolean isBuffered();
 
     void setProjectionMatrix(Matrix4 projectionMatrix);
 
@@ -88,7 +96,7 @@ public interface VideoPlayer extends Disposable {
      *
      * @param listener The listener to set
      */
-    void setOnVideoSizeListener(VideoSizeListener listener);
+    void setPreparedListener(VideoPreparedListener listener);
 
     /**
      * This will set a listener for when the video is done playing. The listener will be called every time a
@@ -101,9 +109,9 @@ public interface VideoPlayer extends Disposable {
     /**
      * This will return the width of the currently playing video.
      * <p/>
-     * This function returns 0 until the {@link VideoSizeListener} has been called for the currently
+     * This function returns 0 until the {@link VideoPreparedListener} has been called for the currently
      * playing video. If this callback has not been set, a good alternative is to wait until the
-     * {@link #isBuffered} function returns true, which guarantees the availability of the videoSize.
+     * {@link #isPrepared} function returns true, which guarantees the availability of the videoSize.
      *
      * @return the width of the video
      */
@@ -112,9 +120,9 @@ public interface VideoPlayer extends Disposable {
     /**
      * This will return the height of the currently playing video.
      * <p/>
-     * This function returns 0 until the {@link VideoSizeListener} has been called for the currently
+     * This function returns 0 until the {@link VideoPreparedListener} has been called for the currently
      * playing video. If this callback has not been set, a good alternative is to wait until the
-     * {@link #isBuffered} function returns true, which guarantees the availability of the videoSize.
+     * {@link #isPrepared} function returns true, which guarantees the availability of the videoSize.
      *
      * @return the height of the video
      */
@@ -126,12 +134,6 @@ public interface VideoPlayer extends Disposable {
      * @return whether the video is still playing
      */
     boolean isPlaying();
-
-    /**
-     * Disposes the VideoPlayer and ensures all buffers and resources are invalidated and disposed.
-     */
-    @Override
-    void dispose();
 
     /**
      * This will update the volume of the audio associated with the currently playing video.
@@ -148,4 +150,11 @@ public interface VideoPlayer extends Disposable {
     float getVolume();
 
     void setColor(Color color);
+
+    void setRepeat(boolean repeat);
+
+    boolean isRepeat();
+
+    /** @return currently used video file (if any). */
+    FileHandle getVideoFileHandle();
 }

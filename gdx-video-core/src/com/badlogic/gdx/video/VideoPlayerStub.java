@@ -16,17 +16,22 @@
 
 package com.badlogic.gdx.video;
 
-import java.io.FileNotFoundException;
-
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.math.Matrix4;
 
+import java.io.IOException;
+
 public class VideoPlayerStub implements VideoPlayer {
 
     @Override
-    public boolean play(FileHandle file) throws FileNotFoundException {
-        return true;
+    public void prepare(FileHandle file) throws IOException {
+
+    }
+
+    @Override
+    public void play() {
+
     }
 
     @Override
@@ -35,7 +40,7 @@ public class VideoPlayerStub implements VideoPlayer {
     }
 
     @Override
-    public boolean isBuffered() {
+    public boolean isPrepared() {
         return true;
     }
 
@@ -57,7 +62,7 @@ public class VideoPlayerStub implements VideoPlayer {
     }
 
     @Override
-    public void setOnVideoSizeListener(VideoSizeListener listener) {
+    public void setPreparedListener(VideoPreparedListener listener) {
     }
 
     @Override
@@ -95,5 +100,20 @@ public class VideoPlayerStub implements VideoPlayer {
     @Override
     public void setColor(Color color) {
 
+    }
+
+    @Override
+    public void setRepeat(boolean repeat) {
+
+    }
+
+    @Override
+    public boolean isRepeat() {
+        return false;
+    }
+
+    @Override
+    public FileHandle getVideoFileHandle() {
+        return null;
     }
 }

@@ -1,22 +1,40 @@
-package com.badlogic.gdx.video;
+package com.badlogic.gdx.video.scene2d;
 
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.Widget;
 import com.badlogic.gdx.utils.GdxRuntimeException;
+import com.badlogic.gdx.utils.Pools;
+import com.badlogic.gdx.video.VideoPlayer;
+import com.badlogic.gdx.video.VideoPlayerCreator;
+import com.badlogic.gdx.video.VideoPlayerInitException;
 
 import java.io.IOException;
 
 public class VideoPlayerWidget extends Widget {
+    private static final String TAG = VideoPlayerWidget.class.getSimpleName();
     private static final Color tmpColor = new Color();
 
     private VideoPlayer videoPlayer;
     private FileHandle videoFile;
 
     private boolean initialized = false;
-    private boolean resizePending = false;
+    private boolean repeat = false;
+    private boolean playOnPrepared = true;
+//    private boolean resizePending = false;
+
+    private final VideoPlayer.CompletionListener completionListener = new VideoPlayer.CompletionListener() {
+        @Override
+        public void onCompletionListener(VideoPlayer videoPlayer) {
+            VideoCompletionEvent changeEvent = Pools.obtain(VideoCompletionEvent.class);
+            changeEvent.initialize(videoFile);
+            fire(changeEvent);
+            Pools.free(changeEvent);
+        }
+    };
 
     public VideoPlayerWidget() {
     }
@@ -39,6 +57,25 @@ public class VideoPlayerWidget extends Widget {
      */
     public VideoPlayer getVideoPlayer() {
         return videoPlayer;
+    }
+
+    public boolean isRepeat() {
+        return repeat;
+    }
+
+    public void setRepeat(boolean repeat) {
+        this.repeat = repeat;
+        if (videoPlayer != null) {
+            videoPlayer.setRepeat(repeat);
+        }
+    }
+
+    public boolean isPlayOnPrepared() {
+        return playOnPrepared;
+    }
+
+    public void setPlayOnPrepared(boolean playOnPrepared) {
+        this.playOnPrepared = playOnPrepared;
     }
 
     @Override
@@ -99,22 +136,34 @@ public class VideoPlayerWidget extends Widget {
 
         try {
             videoPlayer = VideoPlayerCreator.createVideoPlayer();
-            videoPlayer.setOnVideoSizeListener(new VideoPlayer.VideoSizeListener() {
+            videoPlayer.setRepeat(repeat);
+            videoPlayer.setPreparedListener(new VideoPlayer.VideoPreparedListener() {
                 @Override
-                public void onVideoSize(float width, float height) {
+                public void onVideoPrepared(VideoPlayer videoPlayer, float width, float height) {
                     invalidateHierarchy();
+                    // Start playback straight away.
+                    if (playOnPrepared && videoPlayer != null) {
+                        videoPlayer.play();
+                    }
                 }
             });
-        } catch (VideoPlayerInitException e) {
-            e.printStackTrace();
+            videoPlayer.setOnCompletionListener(completionListener);
+            videoPlayer.prepare(videoFile);
+        } catch (Exception e) {
+            Gdx.app.error(TAG, "Error initializing video player.", e);
+            if (videoPlayer != null) {
+                videoPlayer.dispose();
+                videoPlayer = null;
+            }
+            return;
         }
 
-        resizePending = false;
+//        resizePending = false;
         initialized = true;
 
-        if (videoFile != null) {
-            playVideoInternal(videoFile);
-        }
+//        if (videoFile != null) {
+//            playVideoInternal(videoFile);
+//        }
     }
 
     protected void reset() {
@@ -123,18 +172,13 @@ public class VideoPlayerWidget extends Widget {
         videoPlayer.dispose();
         videoPlayer = null;
 
-        resizePending = false;
+//        resizePending = false;
         initialized = false;
     }
 
     protected void playVideoInternal(FileHandle videoFile) {
-        if (initialized) {
-            try {
-                videoPlayer.play(videoFile);
-            } catch (IOException e) {
-                //TODO Gracefully handle the error and do not throw an exception.
-                throw new GdxRuntimeException(e);
-            }
+        if (initialized && videoPlayer.isPrepared()) {
+            videoPlayer.play();
         }
     }
 
@@ -157,6 +201,5 @@ public class VideoPlayerWidget extends Widget {
 //
 //        resizePending = false;
 //    }
-
 
 }

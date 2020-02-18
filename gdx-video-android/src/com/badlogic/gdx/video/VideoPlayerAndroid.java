@@ -16,7 +16,6 @@
 
 package com.badlogic.gdx.video;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -81,13 +80,15 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
     private final VideoPlayerMesh mesh;
     private final Matrix4 projectionMatrix = new Matrix4();
 
-    private VideoSizeListener sizeListener;
-    private CompletionListener completionListener;
-
+    private FileHandle currentFile = null;
     private volatile boolean prepared = false;
     private volatile boolean done = false;
+    private boolean repeat = false;
     private final AtomicBoolean frameAvailable = new AtomicBoolean();
     private float currentVolume = 1.0f;
+
+    private VideoPreparedListener sizeListener;
+    private CompletionListener completionListener;
 
     public VideoPlayerAndroid() {
         this(new VideoPlayerMesh());
@@ -111,13 +112,15 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
         videoTexture.setOnFrameAvailableListener(this);
 
         player = new MediaPlayer();
+        player.setLooping(repeat);
     }
 
     @Override
-    public boolean play(final FileHandle file) throws IOException {
+    public void prepare(final FileHandle file) throws IOException {
         if (!file.exists()) {
-            throw new FileNotFoundException("Could not find file: " + file);
+            throw new IOException("Could not find the file: " + file);
         }
+        this.currentFile = file;
 
         player.reset();
         done = false;
@@ -125,35 +128,19 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
         player.setOnPreparedListener(new OnPreparedListener() {
             @Override
             public void onPrepared(MediaPlayer mp) {
+                //TODO Make sure this call is happening on the main thread.
                 prepared = true;
 
-                final int width = mp.getVideoWidth();
-                final int height = mp.getVideoHeight();
-
-//                // set viewport world dimensions according to video dimensions and viewport type
-//                Gdx.app.postRunnable(new Runnable() {
-//                    @Override
-//                    public void run() {
-//                        mesh.updateDimensions(width, height);
-//
-////                        // force viewport update to let scaling take effect
-////                        if (viewport != null) {
-////                            viewport.setWorldSize(width, height);
-////                            viewport.apply();
-////                        }
-//                    }
-//                });
-
                 if (sizeListener != null) {
-                    sizeListener.onVideoSize(width, height);
+                    sizeListener.onVideoPrepared(VideoPlayerAndroid.this, mp.getVideoWidth(), mp.getVideoHeight());
                 }
-                mp.start();
             }
         });
 
         player.setOnErrorListener(new OnErrorListener() {
             @Override
             public boolean onError(MediaPlayer mp, int what, int extra) {
+                //TODO Make sure this call is happening on the main thread.
                 done = true;
                 Gdx.app.error(TAG, "Video player error: " + what + " " + extra);
                 return false;
@@ -163,15 +150,15 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
         player.setOnCompletionListener(new OnCompletionListener() {
             @Override
             public void onCompletion(MediaPlayer mp) {
+                //TODO Make sure this call is happening on the main thread.
                 done = true;
                 if (completionListener != null) {
-                    completionListener.onCompletionListener(file);
+                    completionListener.onCompletionListener(VideoPlayerAndroid.this);
                 }
             }
         });
 
-        if (file.type() == FileType.Classpath
-                || (file.type() == FileType.Internal && !file.file().exists())) {
+        if (file.type() == FileType.Classpath || (file.type() == FileType.Internal && !file.file().exists())) {
             AssetManager assets = ((AndroidApplication)Gdx.app).getAssets();
             AssetFileDescriptor descriptor = assets.openFd(file.path());
             player.setDataSource(descriptor.getFileDescriptor(), descriptor.getStartOffset(),
@@ -181,8 +168,16 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
         }
         player.setSurface(new Surface(videoTexture));
         player.prepareAsync();
+    }
 
-        return true;
+    @Override
+    public void play() {
+        if (!prepared) {
+            throw new IllegalStateException("The player shall be prepared prior playback.");
+        }
+        if (isPlaying())
+
+        player.start();
     }
 
     @Override
@@ -201,7 +196,7 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
             return false;
         }
         if (!prepared) {
-            return true;
+            return false;
         }
 
         mesh.updateDimensions(x, y, width, height);
@@ -223,7 +218,7 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
             shader.end();
         }
 
-        return !done;
+        return false;
     }
 
     /**
@@ -233,7 +228,7 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
      * @return whether the buffer is filled.
      */
     @Override
-    public boolean isBuffered() {
+    public boolean isPrepared() {
         return prepared;
     }
 
@@ -275,6 +270,7 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
             player.release();
         }
 
+        currentFile = null;
         videoTexture.detachFromGLContext();
 
         GLES20.glDeleteTextures(1, textures, 0);
@@ -290,7 +286,7 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
     }
 
     @Override
-    public void setOnVideoSizeListener(VideoSizeListener listener) {
+    public void setPreparedListener(VideoPreparedListener listener) {
         sizeListener = listener;
     }
 
@@ -338,4 +334,19 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
         return currentVolume;
     }
 
+    @Override
+    public void setRepeat(boolean repeat) {
+        this.repeat = repeat;
+        player.setLooping(repeat);
+    }
+
+    @Override
+    public boolean isRepeat() {
+        return repeat;
+    }
+
+    @Override
+    public FileHandle getVideoFileHandle() {
+        return currentFile;
+    }
 }

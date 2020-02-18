@@ -20,8 +20,10 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.*;
 import com.badlogic.gdx.graphics.Pixmap.Format;
+import com.badlogic.gdx.graphics.glutils.PixmapTextureData;
 import com.badlogic.gdx.graphics.glutils.ShaderProgram;
 import com.badlogic.gdx.math.Matrix4;
+import com.badlogic.gdx.utils.GdxRuntimeException;
 import com.badlogic.gdx.video.VideoDecoder.VideoDecoderBuffers;
 
 import java.io.FileNotFoundException;
@@ -67,8 +69,9 @@ public class VideoPlayerDesktop implements VideoPlayer {
 
     private ReadableByteChannel fileChannel;
     private VideoDecoder decoder;
-    private Pixmap image;
+    private Pixmap pixmap;
     private Texture texture;
+    private PixmapTextureData textureData;
     private RawMusic audio;
 
     private FileHandle currentFile;
@@ -79,8 +82,9 @@ public class VideoPlayerDesktop implements VideoPlayer {
     private float volume = 1.0f;
     private long startTime = 0;
     private long timeBeforePause = 0;
+    private boolean repeat = false;
 
-    private VideoSizeListener sizeListener;
+    private VideoPreparedListener prepareListener;
     private CompletionListener completionListener;
 
     public VideoPlayerDesktop() {
@@ -97,22 +101,19 @@ public class VideoPlayerDesktop implements VideoPlayer {
         if (!shader.isCompiled()) {
             Gdx.app.error(TAG, "Error compiling shader: " + shader.getLog());
         }
+
+        if (!FfMpeg.isLoaded()) {
+            FfMpeg.loadLibraries();
+        }
     }
 
     @Override
-    public boolean play(FileHandle file) throws IOException {
-        if (file == null) {
-            return false;
-        }
+    public void prepare(FileHandle file) throws IOException {
         if (!file.exists()) {
             throw new FileNotFoundException("Could not find file: " + file.path());
         }
 
         currentFile = file;
-
-        if (!FfMpeg.isLoaded()) {
-            FfMpeg.loadLibraries();
-        }
 
         if (decoder != null) {
             // Do all the cleanup
@@ -135,28 +136,50 @@ public class VideoPlayerDesktop implements VideoPlayer {
                     audio.setVolume(volume);
                 }
             } else {
-                return false;
+                throw new IOException("Error initializing decoder buffers.");
             }
         } catch (IOException ioe) {
             throw ioe;
         } catch (Exception e) {
             Gdx.app.error(TAG, "Exception while trying to initialize the video player", e);
-            return false;
+            return;
         }
 
         currentVideoWidth = buffers.getVideoWidth();
         currentVideoHeight = buffers.getVideoHeight();
 
-        if (sizeListener != null) {
-            sizeListener.onVideoSize(currentVideoWidth, currentVideoHeight);
-        }
-
-        image = new Pixmap(currentVideoWidth, currentVideoHeight, Format.RGB888);
-
         mesh.updateDimensions(0f, 0f, currentVideoWidth, currentVideoHeight);
 
+        pixmap = new Pixmap(currentVideoWidth, currentVideoHeight, Format.RGB888);
+        textureData = new PixmapTextureData(pixmap, Format.RGB888, false, false);
+        texture = new Texture(textureData);
+        texture.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
+
+        if (prepareListener != null) {
+            prepareListener.onVideoPrepared(this, currentVideoWidth, currentVideoHeight);
+        }
+    }
+
+    /**
+     * Will return whether the buffer is filled. At the time of writing, the buffer used can store 10 frames
+     * of video. You can find the value in jni/VideoDecoder.h
+     *
+     * @return whether buffer is filled.
+     */
+    @Override
+    public boolean isPrepared() {
+        return decoder != null && decoder.isBuffered();
+    }
+
+    @Override
+    public void play() {
+        if (!isPrepared()) {
+            throw new IllegalStateException("The player shall be prepared prior playback.");
+        }
+        if (playing) return;
+
+        //TODO Reset the playback to the very beginning in case it's finished.
         playing = true;
-        return true;
     }
 
     @Override
@@ -183,52 +206,69 @@ public class VideoPlayerDesktop implements VideoPlayer {
 
     @Override
     public boolean render(float x, float y, float width, float height) {
-        if (decoder != null && !paused) {
-            if (startTime == 0) {
-                // Since startTime is 0, this means that we should now display the first frame of the video, and set the time.
-                startTime = System.currentTimeMillis();
-                if (audio != null) {
-                    audio.play();
-                }
+        if (!isPrepared()) return false;
+
+        mesh.updateDimensions(x, y, width, height);
+
+        if (paused || !playing) {
+//            if (texture != null) {
+                renderTexture();
+//            }
+            return false;
+        }
+
+        if (startTime == 0) {
+            // Since startTime is 0, this means that we should now display the first frame of the video, and set the time.
+            startTime = System.currentTimeMillis();
+            if (audio != null) {
+                audio.play();
             }
+        }
 
-            mesh.updateDimensions(x, y, width, height);
-
-            if (!showAlreadyDecodedFrame) {
-                ByteBuffer videoData = decoder.nextVideoFrame();
-                if (videoData != null) {
-
-                    ByteBuffer data = image.getPixels();
-                    data.rewind();
-                    data.put(videoData);
-                    data.rewind();
-                    if (texture != null) {
-                        texture.dispose();
+        if (!showAlreadyDecodedFrame) {
+            ByteBuffer videoData = decoder.nextVideoFrame();
+            if (videoData != null) {
+                ByteBuffer data = pixmap.getPixels();
+                data.rewind();
+                data.put(videoData);
+                data.rewind();
+                texture.load(textureData);
+            } else {
+                // Repeat functionality.
+                if (repeat) {
+                    try {
+                        //TODO Find a way to repeat without recreating the buffers.
+                        prepare(currentFile);
+                        play();
+                        return render(x, y, width, height);
+                    } catch (IOException e) {
+                        throw new GdxRuntimeException("Error repeating video playback", e);
                     }
-                    texture = new Texture(image);
-                    texture.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
-                } else {
+                }
+
+                renderTexture();
+
+                if (playing) {
                     if (completionListener != null) {
-                        completionListener.onCompletionListener(currentFile);
+                        completionListener.onCompletionListener(this);
                     }
                     playing = false;
-                    renderTexture();
-                    return false;
                 }
+                return false;
             }
-
-            showAlreadyDecodedFrame = false;
-            long currentFrameTimestamp = (long)(decoder.getCurrentFrameTimestamp() * 1000);
-            long currentVideoTime = (System.currentTimeMillis() - startTime);
-            int difference = (int)(currentFrameTimestamp - currentVideoTime);
-            if (difference > 20) {
-                // Difference is more than a frame, draw this one twice
-                showAlreadyDecodedFrame = true;
-            }
-
-            renderTexture();
-
         }
+
+        showAlreadyDecodedFrame = false;
+        long currentFrameTimestamp = (long)(decoder.getCurrentFrameTimestamp() * 1000);
+        long currentVideoTime = (System.currentTimeMillis() - startTime);
+        int difference = (int)(currentFrameTimestamp - currentVideoTime);
+        if (difference > 20) {
+            // Difference is more than a frame, draw this one twice
+            showAlreadyDecodedFrame = true;
+        }
+
+        renderTexture();
+
         return true;
     }
 
@@ -244,20 +284,6 @@ public class VideoPlayerDesktop implements VideoPlayer {
         shader.end();
     }
 
-    /**
-     * Will return whether the buffer is filled. At the time of writing, the buffer used can store 10 frames
-     * of video. You can find the value in jni/VideoDecoder.h
-     *
-     * @return whether buffer is filled.
-     */
-    @Override
-    public boolean isBuffered() {
-        if (decoder != null) {
-            return decoder.isBuffered();
-        }
-        return false;
-    }
-
     @Override
     public void stop() {
         playing = false;
@@ -266,13 +292,14 @@ public class VideoPlayerDesktop implements VideoPlayer {
             audio.dispose();
             audio = null;
         }
+        textureData = null;
         if (texture != null) {
             texture.dispose();
             texture = null;
         }
-        if (image != null) {
-            image.dispose();
-            image = null;
+        if (pixmap != null) {
+            pixmap.dispose();
+            pixmap = null;
         }
         if (decoder != null) {
             decoder.dispose();
@@ -319,8 +346,8 @@ public class VideoPlayerDesktop implements VideoPlayer {
     }
 
     @Override
-    public void setOnVideoSizeListener(VideoSizeListener listener) {
-        sizeListener = listener;
+    public void setPreparedListener(VideoPreparedListener listener) {
+        prepareListener = listener;
     }
 
     @Override
@@ -360,5 +387,20 @@ public class VideoPlayerDesktop implements VideoPlayer {
     @Override
     public void setColor(Color color) {
         mesh.setColor(color);
+    }
+
+    @Override
+    public boolean isRepeat() {
+        return repeat;
+    }
+
+    @Override
+    public void setRepeat(boolean repeat) {
+        this.repeat = repeat;
+    }
+
+    @Override
+    public FileHandle getVideoFileHandle() {
+        return currentFile;
     }
 }

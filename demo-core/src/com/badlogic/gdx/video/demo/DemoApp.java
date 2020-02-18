@@ -3,28 +3,15 @@ package com.badlogic.gdx.video.demo;
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
-import com.badlogic.gdx.InputAdapter;
 import com.badlogic.gdx.files.FileHandle;
-import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
-import com.badlogic.gdx.graphics.Texture;
-import com.badlogic.gdx.graphics.g2d.Batch;
-import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.scenes.scene2d.*;
-import com.badlogic.gdx.scenes.scene2d.actions.Actions;
 import com.badlogic.gdx.scenes.scene2d.ui.*;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
-import com.badlogic.gdx.utils.Align;
-import com.badlogic.gdx.utils.GdxRuntimeException;
 import com.badlogic.gdx.utils.viewport.ExtendViewport;
-import com.badlogic.gdx.utils.viewport.Viewport;
-import com.badlogic.gdx.video.VideoPlayer;
-import com.badlogic.gdx.video.VideoPlayerCreator;
-import com.badlogic.gdx.video.VideoPlayerInitException;
-import com.badlogic.gdx.video.VideoPlayerWidget;
-
-import java.awt.dnd.DropTarget;
-import java.io.IOException;
+import com.badlogic.gdx.video.scene2d.VideoCompletionEvent;
+import com.badlogic.gdx.video.scene2d.VideoCompletionListener;
+import com.badlogic.gdx.video.scene2d.VideoPlayerWidget;
 
 public class DemoApp extends ApplicationAdapter {
 
@@ -48,9 +35,12 @@ public class DemoApp extends ApplicationAdapter {
                         .size(640f, 360f).fill().center();
                 container.setTouchable(Touchable.enabled);
                 container.addListener(new ClickListener() {
+//                    final FileHandle[] videoFiles = new FileHandle[]{
+//                            Gdx.files.internal("video0.webm"),
+//                            Gdx.files.internal("video1.webm"),
+//                            Gdx.files.internal("video2.webm"),};
                     final FileHandle[] videoFiles = new FileHandle[]{
-                            Gdx.files.internal("video0.webm"),
-                            Gdx.files.internal("video1.webm")};
+                            Gdx.files.internal("video2.webm")};
                     int nextVideoFileIdx = 0;
 
                     VideoPlayerWidget videoPlayerWidget = null;
@@ -63,6 +53,14 @@ public class DemoApp extends ApplicationAdapter {
                         }
                         FileHandle videoFile = videoFiles[nextVideoFileIdx];
                         videoPlayerWidget = new VideoPlayerWidget(videoFile);
+                        videoPlayerWidget.setRepeat(false);
+                        videoPlayerWidget.setPlayOnPrepared(true);
+                        videoPlayerWidget.addListener(new VideoCompletionListener() {
+                            @Override
+                            public void onVideoCompleted(VideoCompletionEvent event, Actor actor) {
+                                System.out.println("DemoApp.onVideoCompleted");
+                            }
+                        });
                         container.setActor(videoPlayerWidget);
 
                         nextVideoFileIdx++;
