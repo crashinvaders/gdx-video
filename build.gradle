@@ -60,7 +60,7 @@ configure([project(':gdx-video-core'), project(':gdx-video-desktop'), project(':
     apply plugin: 'maven'
 }
 
-configure(subprojects - project(':gdx-video-android') - project(':demo-android')) {
+configure(subprojects - project(':demo-android')) {
     apply plugin: 'java'
 
 //    archivesBaseName = projectName
