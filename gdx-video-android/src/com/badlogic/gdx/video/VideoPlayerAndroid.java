@@ -16,18 +16,6 @@
 
 package com.badlogic.gdx.video;
 
-import java.io.IOException;
-import java.util.concurrent.atomic.AtomicBoolean;
-
-import com.badlogic.gdx.Files.FileType;
-import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.backends.android.AndroidApplication;
-import com.badlogic.gdx.files.FileHandle;
-import com.badlogic.gdx.graphics.Color;
-import com.badlogic.gdx.graphics.GL20;
-import com.badlogic.gdx.graphics.Mesh;
-import com.badlogic.gdx.graphics.glutils.ShaderProgram;
-
 import android.content.res.AssetFileDescriptor;
 import android.content.res.AssetManager;
 import android.graphics.SurfaceTexture;
@@ -39,7 +27,17 @@ import android.media.MediaPlayer.OnPreparedListener;
 import android.opengl.GLES11Ext;
 import android.opengl.GLES20;
 import android.view.Surface;
+import com.badlogic.gdx.Files.FileType;
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.backends.android.AndroidApplicationBase;
+import com.badlogic.gdx.files.FileHandle;
+import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.GL20;
+import com.badlogic.gdx.graphics.glutils.ShaderProgram;
 import com.badlogic.gdx.math.Matrix4;
+
+import java.io.IOException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Android implementation of the VideoPlayer class.
@@ -172,7 +170,7 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
         });
 
         if (file.type() == FileType.Classpath || (file.type() == FileType.Internal && !file.file().exists())) {
-            AssetManager assets = ((AndroidApplication)Gdx.app).getAssets();
+            AssetManager assets = ((AndroidApplicationBase)Gdx.app).getContext().getAssets();
             AssetFileDescriptor descriptor = assets.openFd(file.path());
             player.setDataSource(descriptor.getFileDescriptor(), descriptor.getStartOffset(),
                     descriptor.getLength());
