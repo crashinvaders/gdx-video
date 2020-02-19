@@ -56,10 +56,6 @@ allprojects {
 	}
 }
 
-configure([project(':gdx-video-core'), project(':gdx-video-desktop'), project(':gdx-video-android')]) {
-    apply plugin: 'maven'
-}
-
 configure(subprojects - project(':demo-android')) {
     apply plugin: 'java'
 

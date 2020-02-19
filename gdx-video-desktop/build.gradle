@@ -1,17 +1,24 @@
 apply plugin: "java-library"
+apply plugin: 'maven'
 
-sourceSets {
-    main.java.srcDirs = ["src/"]
-    test.java.srcDirs = ["srctest/"]
-}
+sourceSets.main.java.srcDirs = ["src/"]
+sourceSets.test.java.srcDirs = ["srctest/"]
+
+ext.nativeLibPath = 'libs/gdx-video-desktop-natives-1.0.0-anonl.jar'
 
 dependencies {
+    compile files(nativeLibPath)
     compile project(":gdx-video-core")
     compile "com.badlogicgames.gdx:gdx-backend-lwjgl3:$gdxVersion"
     runtime "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
-    compile fileTree(dir: 'libs', include: '*.jar')
 
     testCompile "com.badlogicgames.gdx:gdx-jnigen:$gdxVersion"
+}
+
+jar {
+    from files(sourceSets.main.output.classesDirs)
+    from files(sourceSets.main.output.resourcesDir)
+    from zipTree(nativeLibPath)
 }
 
 eclipse.project {
