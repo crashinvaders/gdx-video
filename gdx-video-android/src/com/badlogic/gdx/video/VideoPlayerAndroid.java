@@ -72,13 +72,13 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 		"  gl_FragColor = texture2D(" + UNIFORM_TEXTURE + ", " + VARYING_TEXCOORDINATE + ");    \n" +
 		"}";
 
+    private final VideoPlayerMesh mesh;
     private final ShaderProgram shader;
+    private final Matrix4 projectionMatrix = new Matrix4();
+
     private final int[] textures = new int[1];
     private final SurfaceTexture videoTexture;
     private final MediaPlayer player;
-
-    private final VideoPlayerMesh mesh;
-    private final Matrix4 projectionMatrix = new Matrix4();
 
     private FileHandle currentFile = null;
     private volatile boolean prepared = false;
@@ -91,17 +91,12 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
     private CompletionListener completionListener;
 
     public VideoPlayerAndroid() {
-        this(new VideoPlayerMesh());
+        this(new DefaultVideoPlayerMesh(), new ShaderProgram(VERTEX_SHADER_CODE, FRAGMENT_SHADER_CODE));
     }
 
-    public VideoPlayerAndroid(Mesh mesh, int primitiveType) {
-        this(new VideoPlayerMesh(mesh, primitiveType));
-    }
-
-    private VideoPlayerAndroid(VideoPlayerMesh mesh) {
+    public VideoPlayerAndroid(VideoPlayerMesh mesh, ShaderProgram shader) {
         this.mesh = mesh;
-
-        shader = new ShaderProgram(VERTEX_SHADER_CODE, FRAGMENT_SHADER_CODE);
+        this.shader = shader;
 
         // Generate the actual texture
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
@@ -209,34 +204,30 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
     }
 
     @Override
-    public boolean render(float x, float y, float width, float height) {
-        if (done) {
-            return false;
-        }
-        if (!prepared) {
-            return false;
-        }
+    public void render(float x, float y, float width, float height) {
+        mesh.setDimensions(x, y, width, height);
 
-        mesh.updateDimensions(x, y, width, height);
+        if (done || !prepared) {
+            renderTexture();
+            return;
+        }
 
         // Check if a new frame is available, and if so atomically set the flag to false
         if (frameAvailable.compareAndSet(true, false)) {
             videoTexture.updateTexImage();
         }
+        renderTexture();
+    }
 
-        // Draw texture
-        {
-            Gdx.gl.glEnable(GL20.GL_BLEND);
-            Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
-            GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, textures[0]);
-            shader.begin();
-            shader.setUniformMatrix(UNIFORM_PROJ_TRANSFORM, projectionMatrix);
-            shader.setUniformi(UNIFORM_TEXTURE, 0);
-            mesh.render(shader);
-            shader.end();
-        }
-
-        return false;
+    private void renderTexture() {
+        Gdx.gl.glEnable(GL20.GL_BLEND);
+        Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+        GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, textures[0]);
+        shader.begin();
+        shader.setUniformMatrix(UNIFORM_PROJ_TRANSFORM, projectionMatrix);
+        shader.setUniformi(UNIFORM_TEXTURE, 0);
+        mesh.render(shader);
+        shader.end();
     }
 
     /**

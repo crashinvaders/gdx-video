@@ -1,9 +1,7 @@
 package com.badlogic.gdx.video;
 
 import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.graphics.Camera;
-import com.badlogic.gdx.graphics.Mesh;
-import com.badlogic.gdx.utils.viewport.Viewport;
+import com.badlogic.gdx.graphics.glutils.ShaderProgram;
 
 public class AndroidVideoPlayerFactory implements VideoPlayerFactory {
 
@@ -20,9 +18,9 @@ public class AndroidVideoPlayerFactory implements VideoPlayerFactory {
     }
 
     @Override
-    public VideoPlayer createVideoPlayer(Mesh mesh, int primitiveType) throws VideoPlayerInitException {
+    public VideoPlayer createVideoPlayer(VideoPlayerMesh mesh, ShaderProgram shader) throws VideoPlayerInitException {
         checkAndroidVersion();
-        return new VideoPlayerAndroid(mesh, primitiveType);
+        return new VideoPlayerAndroid(mesh, shader);
     }
 
 }

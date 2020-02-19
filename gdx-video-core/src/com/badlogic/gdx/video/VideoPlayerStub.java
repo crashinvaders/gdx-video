@@ -35,8 +35,8 @@ public class VideoPlayerStub implements VideoPlayer {
     }
 
     @Override
-    public boolean render(float x, float y, float width, float height) {
-        return false;
+    public void render(float x, float y, float width, float height) {
+
     }
 
     @Override

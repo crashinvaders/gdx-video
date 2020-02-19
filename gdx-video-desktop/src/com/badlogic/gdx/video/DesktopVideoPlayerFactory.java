@@ -1,6 +1,6 @@
 package com.badlogic.gdx.video;
 
-import com.badlogic.gdx.graphics.Mesh;
+import com.badlogic.gdx.graphics.glutils.ShaderProgram;
 
 public class DesktopVideoPlayerFactory implements VideoPlayerFactory {
 
@@ -10,8 +10,8 @@ public class DesktopVideoPlayerFactory implements VideoPlayerFactory {
     }
 
     @Override
-    public VideoPlayer createVideoPlayer(Mesh mesh, int primitiveType) throws VideoPlayerInitException {
-        return new VideoPlayerDesktop(mesh, primitiveType);
+    public VideoPlayer createVideoPlayer(VideoPlayerMesh mesh, ShaderProgram shader) throws VideoPlayerInitException {
+        return new VideoPlayerDesktop(mesh, shader);
     }
 
 }

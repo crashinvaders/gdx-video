@@ -68,9 +68,8 @@ public interface VideoPlayer extends Disposable {
      * This function needs to be called every frame, so that the player can update all the buffers.
      * Normal usecase is to start rendering after {@link #isPrepared()} returns true.
      *
-     * @return It returns true if a new frame is being displayed, false if none available (file is finished playing).
      */
-    boolean render(float x, float y, float width, float height);
+    void render(float x, float y, float width, float height);
 
     void setProjectionMatrix(Matrix4 projectionMatrix);
 

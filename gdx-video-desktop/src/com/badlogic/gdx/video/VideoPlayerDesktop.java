@@ -64,7 +64,7 @@ public class VideoPlayerDesktop implements VideoPlayer {
             "}";
 
     private final VideoPlayerMesh mesh;
-    private final ShaderProgram shader = new ShaderProgram(vertexShader, fragmentShader);
+    private final ShaderProgram shader;
     private final Matrix4 projectionMatrix = new Matrix4();
 
     private ReadableByteChannel fileChannel;
@@ -87,24 +87,28 @@ public class VideoPlayerDesktop implements VideoPlayer {
     private VideoPreparedListener prepareListener;
     private CompletionListener completionListener;
 
+    // Make sure the native libs are loaded.
+    static {
+        if (!FfMpeg.isLoaded()) {
+            FfMpeg.loadLibraries();
+        }
+    }
+
     public VideoPlayerDesktop() {
-        this(new VideoPlayerMesh());
+        this(new DefaultVideoPlayerMesh(), new ShaderProgram(vertexShader, fragmentShader));
     }
 
-    public VideoPlayerDesktop(Mesh mesh, int primitiveType) {
-        this(new VideoPlayerMesh(mesh, primitiveType));
-    }
-
-    private VideoPlayerDesktop(VideoPlayerMesh mesh) {
+    public VideoPlayerDesktop(VideoPlayerMesh mesh, ShaderProgram shader) {
         this.mesh = mesh;
+        this.shader = shader;
 
         if (!shader.isCompiled()) {
             Gdx.app.error(TAG, "Error compiling shader: " + shader.getLog());
         }
 
-        if (!FfMpeg.isLoaded()) {
-            FfMpeg.loadLibraries();
-        }
+//        if (!FfMpeg.isLoaded()) {
+//            FfMpeg.loadLibraries();
+//        }
     }
 
     @Override
@@ -148,7 +152,7 @@ public class VideoPlayerDesktop implements VideoPlayer {
         currentVideoWidth = buffers.getVideoWidth();
         currentVideoHeight = buffers.getVideoHeight();
 
-        mesh.updateDimensions(0f, 0f, currentVideoWidth, currentVideoHeight);
+        mesh.setDimensions(0f, 0f, currentVideoWidth, currentVideoHeight);
 
         pixmap = new Pixmap(currentVideoWidth, currentVideoHeight, Format.RGB888);
         textureData = new PixmapTextureData(pixmap, Format.RGB888, false, false);
@@ -205,16 +209,15 @@ public class VideoPlayerDesktop implements VideoPlayer {
     }
 
     @Override
-    public boolean render(float x, float y, float width, float height) {
-        if (!isPrepared()) return false;
+    public void render(float x, float y, float width, float height) {
+        mesh.setDimensions(x, y, width, height);
 
-        mesh.updateDimensions(x, y, width, height);
-
-        if (paused || !playing) {
-//            if (texture != null) {
+        if (!isPrepared() || paused || !playing) {
+            // Always render the last decoded frame (if present).
+            if (texture != null) {
                 renderTexture();
-//            }
-            return false;
+            }
+            return;
         }
 
         if (startTime == 0) {
@@ -240,7 +243,7 @@ public class VideoPlayerDesktop implements VideoPlayer {
                         //TODO Find a way to repeat without recreating the buffers.
                         prepare(currentFile);
                         play();
-                        return render(x, y, width, height);
+                        render(x, y, width, height);
                     } catch (IOException e) {
                         throw new GdxRuntimeException("Error repeating video playback", e);
                     }
@@ -254,7 +257,7 @@ public class VideoPlayerDesktop implements VideoPlayer {
                     }
                     playing = false;
                 }
-                return false;
+                return;
             }
         }
 
@@ -268,11 +271,11 @@ public class VideoPlayerDesktop implements VideoPlayer {
         }
 
         renderTexture();
-
-        return true;
     }
 
     private void renderTexture() {
+        if (texture == null) return;
+
         Gdx.gl.glEnable(GL20.GL_BLEND);
         Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
 

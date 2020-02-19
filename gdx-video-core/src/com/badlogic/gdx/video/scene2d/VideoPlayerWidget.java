@@ -6,13 +6,9 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.Widget;
-import com.badlogic.gdx.utils.GdxRuntimeException;
 import com.badlogic.gdx.utils.Pools;
 import com.badlogic.gdx.video.VideoPlayer;
 import com.badlogic.gdx.video.VideoPlayerCreator;
-import com.badlogic.gdx.video.VideoPlayerInitException;
-
-import java.io.IOException;
 
 public class VideoPlayerWidget extends Widget {
     private static final String TAG = VideoPlayerWidget.class.getSimpleName();
@@ -24,7 +20,6 @@ public class VideoPlayerWidget extends Widget {
     private boolean initialized = false;
     private boolean repeat = false;
     private boolean playOnPrepared = true;
-//    private boolean resizePending = false;
 
     private final VideoPlayer.CompletionListener completionListener = new VideoPlayer.CompletionListener() {
         @Override
@@ -48,7 +43,7 @@ public class VideoPlayerWidget extends Widget {
 
         this.videoFile = videoFile;
 
-        playVideoInternal(videoFile);
+        tryPlayVideo();
     }
 
     /**
@@ -81,14 +76,13 @@ public class VideoPlayerWidget extends Widget {
     @Override
     public void draw(Batch batch, float parentAlpha) {
         super.validate();
-        batch.end();
+        if (videoPlayer == null) return;
 
+        batch.end();
         Color col = getColor();
         videoPlayer.setColor(tmpColor.set(col.r, col.g, col.b, col.a * parentAlpha));
-
         videoPlayer.setProjectionMatrix(batch.getProjectionMatrix());
         videoPlayer.render(getX(), getY(), getWidth(), getHeight());
-
         batch.begin();
     }
 
@@ -115,7 +109,7 @@ public class VideoPlayerWidget extends Widget {
 
     @Override
     public float getPrefWidth() {
-        if (initialized) {
+        if (videoPlayer != null) {
             return videoPlayer.getVideoWidth();
         }
         return super.getPrefWidth();
@@ -123,7 +117,7 @@ public class VideoPlayerWidget extends Widget {
 
     @Override
     public float getPrefHeight() {
-        if (initialized) {
+        if (videoPlayer != null) {
             return videoPlayer.getVideoHeight();
         }
         return super.getPrefHeight();
@@ -131,8 +125,6 @@ public class VideoPlayerWidget extends Widget {
 
     protected void initialize() {
         if (initialized) return;
-
-//        performPendingResize();
 
         try {
             videoPlayer = VideoPlayerCreator.createVideoPlayer();
@@ -158,12 +150,7 @@ public class VideoPlayerWidget extends Widget {
             return;
         }
 
-//        resizePending = false;
         initialized = true;
-
-//        if (videoFile != null) {
-//            playVideoInternal(videoFile);
-//        }
     }
 
     protected void reset() {
@@ -172,34 +159,13 @@ public class VideoPlayerWidget extends Widget {
         videoPlayer.dispose();
         videoPlayer = null;
 
-//        resizePending = false;
         initialized = false;
     }
 
-    protected void playVideoInternal(FileHandle videoFile) {
-        if (initialized && videoPlayer.isPrepared()) {
+    protected void tryPlayVideo() {
+        if (initialized && videoPlayer!= null && videoPlayer.isPrepared()) {
             videoPlayer.play();
         }
     }
-
-//    private void performPendingResize() {
-//        if (!resizePending) return;
-//
-//        final int width;
-//        final int height;
-//
-//        // Size may be zero if the widget wasn't laid out yet.
-//        if ((int)getWidth() == 0 || (int)getHeight() == 0) {
-//            // If the size of the widget is not defined,
-//            // just resize to a small buffer to keep the memory footprint low.
-//            width = 16;
-//            height = 16;
-//
-//        } else {
-//
-//        }
-//
-//        resizePending = false;
-//    }
 
 }

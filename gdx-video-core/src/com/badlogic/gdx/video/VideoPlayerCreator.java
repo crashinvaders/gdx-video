@@ -18,9 +18,8 @@ package com.badlogic.gdx.video;
 
 import com.badlogic.gdx.Application.ApplicationType;
 import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.graphics.Camera;
 import com.badlogic.gdx.graphics.Mesh;
-import com.badlogic.gdx.utils.viewport.Viewport;
+import com.badlogic.gdx.graphics.glutils.ShaderProgram;
 
 /**
  * This class is used to provide a way of creating a VideoPlayer, without knowing the platform the program is
@@ -44,11 +43,11 @@ public final class VideoPlayerCreator {
     }
 
     /**
-     * @see VideoPlayerFactory#createVideoPlayer(Mesh, int)
+     * @see VideoPlayerFactory#createVideoPlayer(VideoPlayerMesh, ShaderProgram)
      */
-    public static VideoPlayer createVideoPlayer(Mesh mesh, int primitiveType)
+    public static VideoPlayer createVideoPlayer(VideoPlayerMesh mesh, ShaderProgram shader)
             throws VideoPlayerInitException {
-        return initFactory().createVideoPlayer(mesh, primitiveType);
+        return initFactory().createVideoPlayer(mesh, shader);
     }
 
     private static synchronized VideoPlayerFactory initFactory() throws VideoPlayerInitException {
