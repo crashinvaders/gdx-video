@@ -38,6 +38,10 @@ public class VideoPlayerWidget extends Widget {
         this.videoFile = videoFile;
     }
 
+    public FileHandle getVideoFile() {
+        return videoFile;
+    }
+
     public void setVideoFile(FileHandle videoFile) {
         if (this.videoFile != null && this.videoFile.equals(videoFile)) return;
 

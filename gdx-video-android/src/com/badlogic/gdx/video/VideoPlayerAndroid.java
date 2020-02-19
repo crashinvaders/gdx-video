@@ -129,6 +129,7 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
                     @Override
                     public void run() {
                         prepared = true;
+                        player.seekTo(0);
 
                         if (sizeListener != null) {
                             sizeListener.onVideoPrepared(VideoPlayerAndroid.this, videoWidth, videoHeight);
@@ -186,7 +187,7 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
         if (!prepared) {
             throw new IllegalStateException("The player shall be prepared prior playback.");
         }
-        if (isPlaying())
+        if (isPlaying()) return;
 
         player.start();
     }
@@ -324,10 +325,12 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 
     @Override
     public boolean isPlaying() {
-        // This used to return false between prepare and play, but that makes the result pretty much useless.
-        // In VideoPlayerDesktop, the isPlaying() method returns true from the moment play() is called up to
-        // the moment the video finished or is stopped. Let's just do that instead.
-        return !done;
+//        // This used to return false between prepare and play, but that makes the result pretty much useless.
+//        // In VideoPlayerDesktop, the isPlaying() method returns true from the moment play() is called up to
+//        // the moment the video finished or is stopped. Let's just do that instead.
+//        return !done;
+
+        return player.isPlaying();
     }
 
     @Override
