@@ -3,15 +3,10 @@ package com.badlogic.gdx.video.demo;
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
-import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.scenes.scene2d.*;
 import com.badlogic.gdx.scenes.scene2d.ui.*;
-import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.utils.viewport.ExtendViewport;
-import com.badlogic.gdx.video.scene2d.VideoCompletionEvent;
-import com.badlogic.gdx.video.scene2d.VideoCompletionListener;
-import com.badlogic.gdx.video.scene2d.VideoPlayerWidget;
 
 public class DemoApp extends ApplicationAdapter {
 
@@ -31,51 +26,63 @@ public class DemoApp extends ApplicationAdapter {
 
             // Centered video container with swappable videos.
             {
-                final Container<Actor> container = new Container<>()
-                        .size(640f, 360f).fill().center();
-                container.setTouchable(Touchable.enabled);
-                container.addListener(new ClickListener() {
-//                    final FileHandle[] videoFiles = new FileHandle[]{
-//                            Gdx.files.internal("video0.webm"),
-//                            Gdx.files.internal("video1.webm"),
-//                            Gdx.files.internal("video2.webm"),};
-                    final FileHandle[] videoFiles = new FileHandle[]{
-                            Gdx.files.internal("video2.webm")};
-                    int nextVideoFileIdx = 0;
-
-                    VideoPlayerWidget videoPlayerWidget = null;
-
-                    @Override
-                    public void clicked(InputEvent event, float x, float y) {
-                        if (videoPlayerWidget != null) {
-                            container.removeActor(videoPlayerWidget);
-                            videoPlayerWidget = null;
-                        }
-                        FileHandle videoFile = videoFiles[nextVideoFileIdx];
-                        videoPlayerWidget = new VideoPlayerWidget(videoFile);
-                        videoPlayerWidget.setRepeat(false);
-                        videoPlayerWidget.setPlayOnPrepared(true);
-                        videoPlayerWidget.addListener(new VideoCompletionListener() {
-                            @Override
-                            public void onVideoCompleted(VideoCompletionEvent event, Actor actor) {
-                                System.out.println("DemoApp.onVideoCompleted");
-                            }
-                        });
-                        container.setActor(videoPlayerWidget);
-
-                        nextVideoFileIdx++;
-                        if (nextVideoFileIdx >= videoFiles.length) {
-                            nextVideoFileIdx = 0;
-                        }
-                    }
-                });
-//                container.addAction(Actions.forever(Actions.sequence(
-//                        Actions.fadeOut(0.5f),
-//                        Actions.fadeIn(0.5f)
-
-//                )));
-                rootView.addActor(container);
+//                final Stack stackVideos = new Stack();
+//                stackVideos.setTouchable(Touchable.enabled);
+//
+//                stackVideos.addListener(new ClickListener() {
+//                    final Array<VideoPlayerWidget> videoPlayerWidgets = Array.with(
+//                            new VideoPlayerWidget(Gdx.files.internal("video0.webm")),
+//                            new VideoPlayerWidget(Gdx.files.internal("video1.webm")),
+//                            new VideoPlayerWidget(Gdx.files.internal("video2.webm"))
+//                    );
+//                    int nextVideoFileIdx = 0;
+//
+//                    {
+//                        for (int i = 0; i < videoPlayerWidgets.size; i++) {
+//                            VideoPlayerWidget widget = videoPlayerWidgets.get(i);
+//                            widget.setPlayOnPrepared(false);
+//                            widget.setRepeat(false);
+//                            widget.setVisible(false);
+//                            stackVideos.add(widget);
+//                        }
+//                    }
+//
+//                    @Override
+//                    public void clicked(InputEvent event, float x, float y) {
+//                        int nextIdx = this.nextVideoFileIdx;
+//                        int prevIdx = nextIdx != 0 ? nextIdx - 1 : videoPlayerWidgets.size - 1;
+//
+//                        if (++nextVideoFileIdx == videoPlayerWidgets.size) {
+//                            nextVideoFileIdx = 0;
+//                        }
+//
+//                        try {
+//                            VideoPlayerWidget prevWidget = videoPlayerWidgets.get(prevIdx);
+//                            prevWidget.getVideoPlayer().stop();
+//                            prevWidget.getVideoPlayer().prepare(prevWidget.getVideoFile());
+//                            prevWidget.setVisible(false);
+//                        } catch (IOException e) {
+//                            throw new GdxRuntimeException(e);
+//                        }
+//
+//                        VideoPlayerWidget nextWidget = videoPlayerWidgets.get(nextIdx);
+//                        nextWidget.getVideoPlayer().resume();
+//                        nextWidget.getVideoPlayer().play();
+//                        nextWidget.setVisible(true);
+//                    }
+//                });
+////                stack.addAction(Actions.forever(Actions.sequence(
+////                        Actions.fadeOut(0.5f),
+////                        Actions.fadeIn(0.5f)
+//
+////                )));
+//
+//                rootView.addActor(new Container<>(stackVideos)
+//                        .size(640f, 360f).fill().center());
             }
+//
+            rootView.addActor(new Container<>(new TestVideoActor())
+                    .size(640f, 360f).fill().center());
 
 //            VideoPlayerWidget videoWidget0 = new VideoPlayerWidget(Gdx.files.internal("video0.webm"));
 //            videoWidget0.addAction(Actions.forever(Actions.sequence(

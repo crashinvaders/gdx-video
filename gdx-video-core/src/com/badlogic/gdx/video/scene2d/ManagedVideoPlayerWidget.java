@@ -10,11 +10,17 @@ import com.badlogic.gdx.utils.Pools;
 import com.badlogic.gdx.video.VideoPlayer;
 import com.badlogic.gdx.video.VideoPlayerCreator;
 
-public class VideoPlayerWidget extends Widget {
-    private static final String TAG = VideoPlayerWidget.class.getSimpleName();
-    private static final Color tmpColor = new Color();
+/** Video playback widget.
+ * It manages own {@link VideoPlayer} internally,
+ * so no any direct configuration/state management is required for {@link VideoPlayer} instance from the outside.
+ * The {@link VideoPlayer} instance gets available once the actor is added to a stage.
+ * <p/>
+ * The widget fires up {@link VideoCompletionEvent} once the playback is completed.
+ * */
+//TODO Solve global app pause/resume issue. As a video keeps playing while the app is in pause state.
+public class ManagedVideoPlayerWidget extends BaseVideoPlayerWidget {
+    private static final String TAG = ManagedVideoPlayerWidget.class.getSimpleName();
 
-    private VideoPlayer videoPlayer;
     private FileHandle videoFile;
 
     private boolean initialized = false;
@@ -24,17 +30,17 @@ public class VideoPlayerWidget extends Widget {
     private final VideoPlayer.CompletionListener completionListener = new VideoPlayer.CompletionListener() {
         @Override
         public void onCompletionListener(VideoPlayer videoPlayer) {
-            VideoCompletionEvent changeEvent = Pools.obtain(VideoCompletionEvent.class);
-            changeEvent.initialize(videoFile);
-            fire(changeEvent);
-            Pools.free(changeEvent);
+            VideoCompletionEvent event = Pools.obtain(VideoCompletionEvent.class);
+            event.initialize(videoPlayer);
+            fire(event);
+            Pools.free(event);
         }
     };
 
-    public VideoPlayerWidget() {
+    public ManagedVideoPlayerWidget() {
     }
 
-    public VideoPlayerWidget(FileHandle videoFile) {
+    public ManagedVideoPlayerWidget(FileHandle videoFile) {
         this.videoFile = videoFile;
     }
 
@@ -48,14 +54,6 @@ public class VideoPlayerWidget extends Widget {
         this.videoFile = videoFile;
 
         tryPlayVideo();
-    }
-
-    /**
-     * The {@link com.badlogic.gdx.video.VideoPlayer} instance gets available once the actor is added to a stage.
-     * @return local {@link com.badlogic.gdx.video.VideoPlayer} instance with the provided video file initialized.
-     */
-    public VideoPlayer getVideoPlayer() {
-        return videoPlayer;
     }
 
     public boolean isRepeat() {
@@ -78,19 +76,6 @@ public class VideoPlayerWidget extends Widget {
     }
 
     @Override
-    public void draw(Batch batch, float parentAlpha) {
-        super.validate();
-        if (videoPlayer == null) return;
-
-        batch.end();
-        Color col = getColor();
-        videoPlayer.setColor(tmpColor.set(col.r, col.g, col.b, col.a * parentAlpha));
-        videoPlayer.setProjectionMatrix(batch.getProjectionMatrix());
-        videoPlayer.render(getX(), getY(), getWidth(), getHeight());
-        batch.begin();
-    }
-
-    @Override
     protected void setStage(Stage stage) {
         super.setStage(stage);
 
@@ -99,32 +84,6 @@ public class VideoPlayerWidget extends Widget {
         } else {
             reset();
         }
-    }
-
-    @Override
-    public float getMinWidth() {
-        return 0;
-    }
-
-    @Override
-    public float getMinHeight() {
-        return 0;
-    }
-
-    @Override
-    public float getPrefWidth() {
-        if (videoPlayer != null) {
-            return videoPlayer.getVideoWidth();
-        }
-        return super.getPrefWidth();
-    }
-
-    @Override
-    public float getPrefHeight() {
-        if (videoPlayer != null) {
-            return videoPlayer.getVideoHeight();
-        }
-        return super.getPrefHeight();
     }
 
     protected void initialize() {

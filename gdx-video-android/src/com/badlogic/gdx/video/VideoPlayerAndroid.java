@@ -41,9 +41,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Android implementation of the VideoPlayer class.
- *
- * @author Rob Bogie <rob.bogie@codepoke.net>
  */
+//TODO Android's MediaPlayer is not thread safe so all the calls to it shall be synchronized to Android's main thread.
 public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener {
     private static final String TAG = VideoPlayerAndroid.class.getSimpleName();
 
