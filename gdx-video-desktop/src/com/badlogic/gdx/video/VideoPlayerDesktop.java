@@ -172,7 +172,7 @@ public class VideoPlayerDesktop implements VideoPlayer {
      */
     @Override
     public boolean isPrepared() {
-        return decoder != null && decoder.isBuffered();
+        return decoder != null;
     }
 
     @Override
