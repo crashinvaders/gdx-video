@@ -1,75 +1,32 @@
 # GDX-Video
 A LibGDX cross platform video rendering extension
 
-## Contents
-* [Getting Started] (#getting-started)
-  * [Maven Repositories] (#repositories)
-  * [Using with Gradle] (#gradle-dependency-declarations)
-  * [Using with Maven] (#maven-dependency-declarations)
-* [Issues] (#issues)
-* [Contributing] (#contributing)
-  * [Working from source] (#working-from-source)
-* [Licensing] (#licensing)
+## Status
+This repo is a fork of an old project with an aim on adapting it to the modern LibGDX usage.
+As in the original library, the only native backends supported are Desktop (LWJGL3) and Android (min SDK version is 17).
+It's still under active development and not yet published anywhere as maven artifacts, howerver you can assemble library locally to play with it:
 
-## Getting Started
+#### 1. Install the lib to the local maven repo
+`./gradlew installAll`
 
-Gdx-video is available in maven with Official builds and Snapshot builds.  You can find them at the following repositories:
-
-#### Repositories
-
-* **Official**  For official releases, use https://oss.sonatype.org/content/repositories/releases
-* **Snapshots** For snapshot builds, use https://oss.sonatype.org/content/repositories/snapshots
-
-#### Gradle dependency declarations
-Core:
-```groovy
-compile "com.badlogicgames.gdxvideo:gdx-video:0.0.1"
+#### 2. Add the library as a maven dependecy to your project
 ```
-Desktop:
-```groovy
-compile "com.badlogicgames.gdxvideo:gdx-video-desktop:0.0.1"
-compile "com.badlogicgames.gdxvideo:gdx-video-platform:0.0.1:natives-desktop"
-```
-Android:
-```groovy
-compile "com.badlogicgames.gdxvideo:gdx-video-android:0.0.1"
-```
-#### Maven
-Core:
-```xml
-<dependency>
-  <groupId>com.badlogicgames.gdxvideo</groupId>
-  <artifactId>gdx-video</artifactId>
-  <version>0.0.1</version>
-</dependency>
-```
-Desktop:
-```xml
-<dependency>
-  <groupId>com.badlogicgames.gdxvideo</groupId>
-  <artifactId>gdx-video-desktop</artifactId>
-  <version>0.0.1</version>
-</dependency>
-<dependency>
-  <groupId>com.badlogicgames.gdxvideo</groupId>
-  <artifactId>gdx-video-platform</artifactId>
-  <version>0.0.1</version>
-  <classifier>natives-desktop</classifier>
-</dependency>
-```
-Android:
-```xml
-<dependency>
-  <groupId>com.badlogicgames.gdxvideo</groupId>
-  <artifactId>gdx-video-android</artifactId>
-  <version>0.0.1</version>
-</dependency>
-```
-## Issues
+repositories {
+    mavenLocal()
+}
 
+// Core module
+dependencies {
+    api "com.metaphore.gdx.video:gdx-video-core:0.1.0"
+}
 
-## Contributing
+// Desktop (LWJGL3) module
+dependencies {
+    api "com.metaphore.gdx.video:gdx-video-desktop:0.1.0"
+}
 
-### Working from source
-
-## Licensing
+// Android module
+dependencies {
+    api "com.metaphore.gdx.video:gdx-video-android:0.1.0"
+}
+```
