@@ -28,11 +28,6 @@ import com.badlogic.gdx.utils.Disposable;
  * @author Rob Bogie <rob.bogie@codepoke.net>
  */
 public interface VideoPlayer extends Disposable {
-    interface VideoPlayerListener {
-        void onVideoPrepared(VideoPlayer videoPlayer, float width, float height);
-        void onVideoError(Exception e);
-        void onCompletionListener(VideoPlayer videoPlayer);
-    }
 
     /**
      * Disposes the VideoPlayer and ensures all buffers and resources are invalidated and disposed.

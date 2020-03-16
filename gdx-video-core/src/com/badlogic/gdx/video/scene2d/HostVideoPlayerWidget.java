@@ -2,6 +2,7 @@ package com.badlogic.gdx.video.scene2d;
 
 import com.badlogic.gdx.utils.Pools;
 import com.badlogic.gdx.video.VideoPlayer;
+import com.badlogic.gdx.video.VideoPlayerListener;
 
 /** A host for any {@link VideoPlayer} that is provided.
  * The widget doesn't manage lifecycle state for the {@link VideoPlayer} instance
@@ -12,7 +13,7 @@ import com.badlogic.gdx.video.VideoPlayer;
  * after the {@link VideoPlayer} instance was provided. */
 public class HostVideoPlayerWidget extends BaseVideoPlayerWidget {
 
-    private final VideoPlayer.VideoPlayerListener internalVideoListener = new VideoPlayer.VideoPlayerListener() {
+    private final VideoPlayerListener internalVideoListener = new VideoPlayerListener() {
         @Override
         public void onCompletionListener(VideoPlayer videoPlayer) {
             VideoCompletionEvent event = Pools.obtain(VideoCompletionEvent.class);

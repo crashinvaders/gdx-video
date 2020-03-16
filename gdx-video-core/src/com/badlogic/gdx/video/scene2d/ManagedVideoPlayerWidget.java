@@ -6,6 +6,7 @@ import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.utils.Pools;
 import com.badlogic.gdx.video.VideoPlayer;
 import com.badlogic.gdx.video.VideoPlayerCreator;
+import com.badlogic.gdx.video.VideoPlayerListener;
 
 /** Video playback widget.
  * It manages own {@link VideoPlayer} internally,
@@ -78,7 +79,7 @@ public class ManagedVideoPlayerWidget extends BaseVideoPlayerWidget {
 
         videoPlayer = VideoPlayerCreator.createVideoPlayer();
         videoPlayer.setRepeat(repeat);
-        videoPlayer.setListener(new VideoPlayer.VideoPlayerListener() {
+        videoPlayer.setListener(new VideoPlayerListener() {
             @Override
             public void onCompletionListener(VideoPlayer videoPlayer) {
                 VideoCompletionEvent event = Pools.obtain(VideoCompletionEvent.class);
