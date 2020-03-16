@@ -89,7 +89,7 @@ public class ManagedVideoPlayerWidget extends BaseVideoPlayerWidget {
         videoPlayer.setRepeat(repeat);
         videoPlayer.setListener(new VideoPlayerListener() {
             @Override
-            public void onCompletionListener(VideoPlayer videoPlayer) {
+            public void onVideoCompleted(VideoPlayer videoPlayer) {
                 VideoCompletionEvent event = Pools.obtain(VideoCompletionEvent.class);
                 event.initialize(videoPlayer);
                 fire(event);
@@ -106,11 +106,11 @@ public class ManagedVideoPlayerWidget extends BaseVideoPlayerWidget {
             }
 
             @Override
-            public void onVideoError(Exception e) {
-                Gdx.app.error(TAG, "Video player error occurred.", e);
-                if (videoPlayer != null) {
-                    videoPlayer.dispose();
-                    videoPlayer = null;
+            public void onVideoError(VideoPlayer videoPlayer, Exception exception) {
+                Gdx.app.error(TAG, "Video player error occurred.", exception);
+                if (ManagedVideoPlayerWidget.this.videoPlayer != null) {
+                    ManagedVideoPlayerWidget.this.videoPlayer.dispose();
+                    ManagedVideoPlayerWidget.this.videoPlayer = null;
                 }
                 initialized = false;
             }

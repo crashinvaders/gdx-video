@@ -2,15 +2,15 @@ package com.badlogic.gdx.video;
 
 public interface VideoPlayerListener {
     void onVideoPrepared(VideoPlayer videoPlayer, float width, float height);
-    void onVideoError(Exception e);
-    void onCompletionListener(VideoPlayer videoPlayer);
+    void onVideoError(VideoPlayer videoPlayer, Exception exception);
+    void onVideoCompleted(VideoPlayer videoPlayer);
 
     class Adapter implements VideoPlayerListener {
         @Override
         public void onVideoPrepared(VideoPlayer videoPlayer, float width, float height) { }
         @Override
-        public void onVideoError(Exception e) { }
+        public void onVideoError(VideoPlayer videoPlayer, Exception exception) { }
         @Override
-        public void onCompletionListener(VideoPlayer videoPlayer) { }
+        public void onVideoCompleted(VideoPlayer videoPlayer) { }
     }
 }

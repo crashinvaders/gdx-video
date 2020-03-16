@@ -171,7 +171,7 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
                     public void run() {
                         done = true;
                         if (listener != null) {
-                            listener.onCompletionListener(VideoPlayerAndroid.this);
+                            listener.onVideoCompleted(VideoPlayerAndroid.this);
                         }
                     }
                 });
@@ -419,7 +419,7 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
     private void reportError(Exception exception) {
         Gdx.app.error(TAG, "Video player error.", exception);
         if (listener != null) {
-            listener.onVideoError(exception);
+            listener.onVideoError(this, exception);
         }
     }
 }

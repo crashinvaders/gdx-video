@@ -15,7 +15,7 @@ public class HostVideoPlayerWidget extends BaseVideoPlayerWidget {
 
     private final VideoPlayerListener internalVideoListener = new VideoPlayerListener() {
         @Override
-        public void onCompletionListener(VideoPlayer videoPlayer) {
+        public void onVideoCompleted(VideoPlayer videoPlayer) {
             VideoCompletionEvent event = Pools.obtain(VideoCompletionEvent.class);
             event.initialize(videoPlayer);
             fire(event);
@@ -28,7 +28,7 @@ public class HostVideoPlayerWidget extends BaseVideoPlayerWidget {
         }
 
         @Override
-        public void onVideoError(Exception e) {
+        public void onVideoError(VideoPlayer videoPlayer, Exception exception) {
             // Do nothing.
         }
     };

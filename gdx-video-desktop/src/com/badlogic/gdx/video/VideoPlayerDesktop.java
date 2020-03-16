@@ -246,7 +246,7 @@ public class VideoPlayerDesktop implements VideoPlayer {
 
                 if (playing) {
                     if (listener != null) {
-                        listener.onCompletionListener(this);
+                        listener.onVideoCompleted(this);
                     }
                     playing = false;
                 }
@@ -403,7 +403,7 @@ public class VideoPlayerDesktop implements VideoPlayer {
     private void reportError(Exception exception) {
         Gdx.app.error(TAG, "Video player error.", exception);
         if (listener != null) {
-            listener.onVideoError(exception);
+            listener.onVideoError(this, exception);
         }
     }
 }
