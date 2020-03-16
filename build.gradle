@@ -29,7 +29,7 @@ allprojects {
     apply plugin: 'eclipse'
     apply plugin: 'idea'
 
-    group = 'com.metaphore.gdx.video'
+    group = 'com.crashinvaders.gdxvideo'
     version = '0.1.0'
 
     repositories {

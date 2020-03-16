@@ -17,16 +17,16 @@ repositories {
 
 // Core module
 dependencies {
-    api "com.metaphore.gdx.video:gdx-video-core:0.1.0"
+    api "com.crashinvaders.gdxvideo:gdx-video-core:0.1.0"
 }
 
 // Desktop (LWJGL3) module
 dependencies {
-    api "com.metaphore.gdx.video:gdx-video-desktop:0.1.0"
+    api "com.crashinvaders.gdxvideo:gdx-video-desktop:0.1.0"
 }
 
 // Android module
 dependencies {
-    api "com.metaphore.gdx.video:gdx-video-android:0.1.0"
+    api "com.crashinvaders.gdxvideo:gdx-video-android:0.1.0"
 }
 ```
