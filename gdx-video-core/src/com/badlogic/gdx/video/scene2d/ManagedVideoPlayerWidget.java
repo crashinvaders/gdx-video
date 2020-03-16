@@ -6,6 +6,7 @@ import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.utils.Pools;
 import com.badlogic.gdx.video.VideoPlayer;
 import com.badlogic.gdx.video.VideoPlayerCreator;
+import com.badlogic.gdx.video.VideoPlayerInitException;
 import com.badlogic.gdx.video.VideoPlayerListener;
 
 /** Video playback widget.
@@ -77,7 +78,14 @@ public class ManagedVideoPlayerWidget extends BaseVideoPlayerWidget {
     protected void initialize() {
         if (initialized) return;
 
-        videoPlayer = VideoPlayerCreator.createVideoPlayer();
+        try {
+            videoPlayer = VideoPlayerCreator.createVideoPlayer();
+        } catch (VideoPlayerInitException e) {
+            Gdx.app.error(TAG, "Error initializing video player.", e);
+            videoPlayer = null;
+            return;
+        }
+
         videoPlayer.setRepeat(repeat);
         videoPlayer.setListener(new VideoPlayerListener() {
             @Override
@@ -99,7 +107,7 @@ public class ManagedVideoPlayerWidget extends BaseVideoPlayerWidget {
 
             @Override
             public void onVideoError(Exception e) {
-                Gdx.app.error(TAG, "Error initializing video player.", e);
+                Gdx.app.error(TAG, "Video player error occurred.", e);
                 if (videoPlayer != null) {
                     videoPlayer.dispose();
                     videoPlayer = null;
