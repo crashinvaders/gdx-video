@@ -16,8 +16,6 @@
 
 package com.badlogic.gdx.video;
 
-import java.io.IOException;
-
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.math.Matrix4;
@@ -30,11 +28,9 @@ import com.badlogic.gdx.utils.Disposable;
  * @author Rob Bogie <rob.bogie@codepoke.net>
  */
 public interface VideoPlayer extends Disposable {
-    interface VideoPreparedListener {
+    interface VideoPlayerListener {
         void onVideoPrepared(VideoPlayer videoPlayer, float width, float height);
-    }
-
-    interface CompletionListener {
+        void onVideoError(Exception e);
         void onCompletionListener(VideoPlayer videoPlayer);
     }
 
@@ -50,7 +46,7 @@ public interface VideoPlayer extends Disposable {
      *
      * @param file The file containing the video which should be played.
      */
-    void prepare(final FileHandle file) throws IOException;
+    void prepare(final FileHandle file);
 
     /**
      * Checks if the video is buffered and ready to be played.
@@ -89,26 +85,13 @@ public interface VideoPlayer extends Disposable {
      */
     void stop();
 
-    /**
-     * This will set a listener for whenever the video size of a file is known (after calling play). This is
-     * needed since the size of the video is not directly known after using the play method.
-     *
-     * @param listener The listener to set
-     */
-    void setPreparedListener(VideoPreparedListener listener);
-
-    /**
-     * This will set a listener for when the video is done playing. The listener will be called every time a
-     * video is done playing.
-     *
-     * @param listener The listener to set
-     */
-    void setOnCompletionListener(CompletionListener listener);
+    void setListener(VideoPlayerListener listener);
+    VideoPlayerListener getListener();
 
     /**
      * This will return the width of the currently playing video.
      * <p/>
-     * This function returns 0 until the {@link VideoPreparedListener} has been called for the currently
+     * This function returns 0 until the {@link VideoPlayerListener} has been called for the currently
      * playing video. If this callback has not been set, a good alternative is to wait until the
      * {@link #isPrepared} function returns true, which guarantees the availability of the videoSize.
      *
@@ -119,7 +102,7 @@ public interface VideoPlayer extends Disposable {
     /**
      * This will return the height of the currently playing video.
      * <p/>
-     * This function returns 0 until the {@link VideoPreparedListener} has been called for the currently
+     * This function returns 0 until the {@link VideoPlayerListener} has been called for the currently
      * playing video. If this callback has not been set, a good alternative is to wait until the
      * {@link #isPrepared} function returns true, which guarantees the availability of the videoSize.
      *

@@ -1,6 +1,6 @@
 package com.badlogic.gdx.video;
 
-public class VideoPlayerInitException extends Exception {
+public class VideoPlayerInitException extends RuntimeException {
 
     private static final long serialVersionUID = 1L;
 

@@ -26,6 +26,8 @@ import android.media.MediaPlayer.OnErrorListener;
 import android.media.MediaPlayer.OnPreparedListener;
 import android.opengl.GLES11Ext;
 import android.opengl.GLES20;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.Surface;
 import com.badlogic.gdx.Files.FileType;
 import com.badlogic.gdx.Gdx;
@@ -35,7 +37,9 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.glutils.ShaderProgram;
 import com.badlogic.gdx.math.Matrix4;
+import com.badlogic.gdx.utils.GdxRuntimeException;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -44,14 +48,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 //TODO Android's MediaPlayer is not thread safe so all the calls to it shall be synchronized to Android's main thread.
 public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener {
-    private static final String TAG = VideoPlayerAndroid.class.getSimpleName();
+    protected static final String TAG = VideoPlayerAndroid.class.getSimpleName();
 
-    private static final String ATTRIBUTE_TEXCOORDINATE = ShaderProgram.TEXCOORD_ATTRIBUTE + "0";
-    private static final String VARYING_TEXCOORDINATE = "varTexCoordinate";
-    private static final String UNIFORM_TEXTURE = "u_texture";
-    private static final String UNIFORM_PROJ_TRANSFORM = "u_projTrans";
+    protected static final String ATTRIBUTE_TEXCOORDINATE = ShaderProgram.TEXCOORD_ATTRIBUTE + "0";
+    protected static final String VARYING_TEXCOORDINATE = "varTexCoordinate";
+    protected static final String UNIFORM_TEXTURE = "u_texture";
+    protected static final String UNIFORM_PROJ_TRANSFORM = "u_projTrans";
 
-    private static final String VERTEX_SHADER_CODE =
+    protected static final String VERTEX_SHADER_CODE =
         "attribute highp vec4 a_position; \n" +
 		"attribute highp vec2 " + ATTRIBUTE_TEXCOORDINATE + ";" +
 		"uniform highp mat4 " + UNIFORM_PROJ_TRANSFORM + ";" +
@@ -61,7 +65,7 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 		" varTexCoordinate = " + ATTRIBUTE_TEXCOORDINATE + ";\n" +
 		"} \n";
 
-    private static final String FRAGMENT_SHADER_CODE =
+    protected static final String FRAGMENT_SHADER_CODE =
         "#extension GL_OES_EGL_image_external : require\n" +
 		"uniform samplerExternalOES " + UNIFORM_TEXTURE + ";" +
 		"varying highp vec2 " + VARYING_TEXCOORDINATE + ";" +
@@ -69,23 +73,24 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 		"  gl_FragColor = texture2D(" + UNIFORM_TEXTURE + ", " + VARYING_TEXCOORDINATE + ");    \n" +
 		"}";
 
-    private final VideoPlayerMesh mesh;
-    private final ShaderProgram shader;
-    private final Matrix4 projectionMatrix = new Matrix4();
+    protected final VideoPlayerMesh mesh;
+    protected final ShaderProgram shader;
+    protected final Matrix4 projectionMatrix = new Matrix4();
 
-    private final int[] textures = new int[1];
-    private final SurfaceTexture videoTexture;
-    private final MediaPlayer player;
+    protected final int[] textures = new int[1];
+    protected final SurfaceTexture videoTexture;
+    protected final Handler androidThreadHandler;
+    protected final MediaPlayer player;
 
-    private FileHandle currentFile = null;
-    private volatile boolean prepared = false;
-    private volatile boolean done = false;
-    private boolean repeat = false;
-    private final AtomicBoolean frameAvailable = new AtomicBoolean();
-    private float currentVolume = 1.0f;
+    protected FileHandle currentFile = null;
+    protected volatile boolean prepared = false;
+    protected volatile boolean done = false;
+    protected volatile boolean disposed = false;
+    protected boolean repeat = false;
+    protected final AtomicBoolean frameAvailable = new AtomicBoolean();
+    protected float currentVolume = 1.0f;
 
-    private VideoPreparedListener sizeListener;
-    private CompletionListener completionListener;
+    protected VideoPlayerListener listener;
 
     public VideoPlayerAndroid() {
         this(new DefaultVideoPlayerMesh(), new ShaderProgram(VERTEX_SHADER_CODE, FRAGMENT_SHADER_CODE));
@@ -103,17 +108,21 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
         videoTexture = new SurfaceTexture(textures[0]);
         videoTexture.setOnFrameAvailableListener(this);
 
+        this.androidThreadHandler = new Handler(Looper.getMainLooper());
+
         player = new MediaPlayer();
         player.setLooping(repeat);
     }
 
     @Override
-    public void prepare(final FileHandle file) throws IOException {
+    public void prepare(final FileHandle file) {
         if (!file.exists()) {
-            throw new IOException("Could not find the file: " + file);
+            reportError(new FileNotFoundException("Could not find the file: " + file));
+            return;
         }
         this.currentFile = file;
 
+        //TODO This call might need to be synced to Android UI thread.
         player.reset();
         done = false;
 
@@ -122,16 +131,16 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
             public void onPrepared(MediaPlayer mp) {
                 final int videoWidth = mp.getVideoWidth();
                 final int videoHeight = mp.getVideoHeight();
+                player.seekTo(0);
 
                 // This call happens on the Android's main thread. We need to sync.
                 Gdx.app.postRunnable(new Runnable() {
                     @Override
                     public void run() {
                         prepared = true;
-                        player.seekTo(0);
 
-                        if (sizeListener != null) {
-                            sizeListener.onVideoPrepared(VideoPlayerAndroid.this, videoWidth, videoHeight);
+                        if (listener != null) {
+                            listener.onVideoPrepared(VideoPlayerAndroid.this, videoWidth, videoHeight);
                         }
                     }
                 });
@@ -146,7 +155,7 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
                     @Override
                     public void run() {
                         done = true;
-                        Gdx.app.error(TAG, "Video player error: " + what + " " + extra);
+                        reportError(new GdxRuntimeException("Native video player error: " + what + " " + extra));
                     }
                 });
                 return true;
@@ -161,24 +170,37 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
                     @Override
                     public void run() {
                         done = true;
-                        if (completionListener != null) {
-                            completionListener.onCompletionListener(VideoPlayerAndroid.this);
+                        if (listener != null) {
+                            listener.onCompletionListener(VideoPlayerAndroid.this);
                         }
                     }
                 });
             }
         });
 
-        if (file.type() == FileType.Classpath || (file.type() == FileType.Internal && !file.file().exists())) {
-            AssetManager assets = ((AndroidApplicationBase)Gdx.app).getContext().getAssets();
-            AssetFileDescriptor descriptor = assets.openFd(file.path());
-            player.setDataSource(descriptor.getFileDescriptor(), descriptor.getStartOffset(),
-                    descriptor.getLength());
-        } else {
-            player.setDataSource(file.file().getAbsolutePath());
+        try {
+            if (file.type() == FileType.Classpath || (file.type() == FileType.Internal && !file.file().exists())) {
+                AssetManager assets = ((AndroidApplicationBase)Gdx.app).getContext().getAssets();
+                AssetFileDescriptor descriptor = assets.openFd(file.path());
+                player.setDataSource(descriptor.getFileDescriptor(), descriptor.getStartOffset(),
+                        descriptor.getLength());
+            } else {
+                player.setDataSource(file.file().getAbsolutePath());
+            }
+        } catch (IOException e) {
+            reportError(e);
+            done = true;
+            return;
         }
-        player.setSurface(new Surface(videoTexture));
-        player.prepareAsync();
+
+        //TODO These calls probably don't require any sync.
+        androidThreadHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                player.setSurface(new Surface(videoTexture));
+                player.prepareAsync();
+            }
+        });
     }
 
     @Override
@@ -188,7 +210,12 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
         }
         if (isPlaying()) return;
 
-        player.start();
+        androidThreadHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                player.start();
+            }
+        });
     }
 
     @Override
@@ -217,7 +244,7 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
         renderTexture();
     }
 
-    private void renderTexture() {
+    protected void renderTexture() {
         Gdx.gl.glEnable(GL20.GL_BLEND);
         Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
         GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, textures[0]);
@@ -242,7 +269,12 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
     @Override
     public void stop() {
         if (prepared) {
-            player.stop();
+            androidThreadHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    player.stop();
+                }
+            });
         }
         prepared = false;
         done = true;
@@ -250,6 +282,7 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 
     @Override
     public void onFrameAvailable(SurfaceTexture surfaceTexture) {
+        if (disposed) return;
         frameAvailable.set(true);
     }
 
@@ -257,7 +290,12 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
     public void pause() {
         // If it is running
         if (prepared) {
-            player.pause();
+            androidThreadHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    player.pause();
+                }
+            });
         }
     }
 
@@ -265,16 +303,30 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
     public void resume() {
         // If it is running
         if (prepared) {
-            player.start();
+            androidThreadHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    player.start();
+                }
+            });
         }
     }
 
     @Override
     public void dispose() {
         stop();
+        this.disposed = true;
 
         if (player != null) {
-            player.release();
+            androidThreadHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    // Clear sync call queue.
+                    androidThreadHandler.removeCallbacksAndMessages(null);
+                    // And release player resources.
+                    player.release();
+                }
+            });
         }
 
         currentFile = null;
@@ -293,13 +345,13 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
     }
 
     @Override
-    public void setPreparedListener(VideoPreparedListener listener) {
-        sizeListener = listener;
+    public void setListener(VideoPlayerListener listener) {
+        this.listener = listener;
     }
 
     @Override
-    public void setOnCompletionListener(CompletionListener listener) {
-        completionListener = listener;
+    public VideoPlayerListener getListener() {
+        return listener;
     }
 
     @Override
@@ -324,18 +376,18 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
 
     @Override
     public boolean isPlaying() {
-//        // This used to return false between prepare and play, but that makes the result pretty much useless.
-//        // In VideoPlayerDesktop, the isPlaying() method returns true from the moment play() is called up to
-//        // the moment the video finished or is stopped. Let's just do that instead.
-//        return !done;
-
         return player.isPlaying();
     }
 
     @Override
-    public void setVolume(float volume) {
+    public void setVolume(final float volume) {
         currentVolume = volume;
-        player.setVolume(volume, volume);
+        androidThreadHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                player.setVolume(volume, volume);
+            }
+        });
     }
 
     @Override
@@ -344,9 +396,14 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
     }
 
     @Override
-    public void setRepeat(boolean repeat) {
+    public void setRepeat(final boolean repeat) {
         this.repeat = repeat;
-        player.setLooping(repeat);
+        androidThreadHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                player.setLooping(repeat);
+            }
+        });
     }
 
     @Override
@@ -357,5 +414,12 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
     @Override
     public FileHandle getVideoFileHandle() {
         return currentFile;
+    }
+
+    private void reportError(Exception exception) {
+        Gdx.app.error(TAG, "Video player error.", exception);
+        if (listener != null) {
+            listener.onVideoError(exception);
+        }
     }
 }

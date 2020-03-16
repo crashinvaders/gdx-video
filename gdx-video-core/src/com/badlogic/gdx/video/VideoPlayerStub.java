@@ -20,12 +20,10 @@ import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.math.Matrix4;
 
-import java.io.IOException;
-
 public class VideoPlayerStub implements VideoPlayer {
 
     @Override
-    public void prepare(FileHandle file) throws IOException {
+    public void prepare(FileHandle file) {
 
     }
 
@@ -62,11 +60,13 @@ public class VideoPlayerStub implements VideoPlayer {
     }
 
     @Override
-    public void setPreparedListener(VideoPreparedListener listener) {
+    public void setListener(VideoPlayerListener listener) {
+
     }
 
     @Override
-    public void setOnCompletionListener(CompletionListener listener) {
+    public VideoPlayerListener getListener() {
+        return null;
     }
 
     @Override

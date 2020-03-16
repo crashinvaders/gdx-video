@@ -2,10 +2,7 @@ package com.badlogic.gdx.video.scene2d;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.files.FileHandle;
-import com.badlogic.gdx.graphics.Color;
-import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.scenes.scene2d.Stage;
-import com.badlogic.gdx.scenes.scene2d.ui.Widget;
 import com.badlogic.gdx.utils.Pools;
 import com.badlogic.gdx.video.VideoPlayer;
 import com.badlogic.gdx.video.VideoPlayerCreator;
@@ -26,16 +23,6 @@ public class ManagedVideoPlayerWidget extends BaseVideoPlayerWidget {
     private boolean initialized = false;
     private boolean repeat = false;
     private boolean playOnPrepared = true;
-
-    private final VideoPlayer.CompletionListener completionListener = new VideoPlayer.CompletionListener() {
-        @Override
-        public void onCompletionListener(VideoPlayer videoPlayer) {
-            VideoCompletionEvent event = Pools.obtain(VideoCompletionEvent.class);
-            event.initialize(videoPlayer);
-            fire(event);
-            Pools.free(event);
-        }
-    };
 
     public ManagedVideoPlayerWidget() {
     }
@@ -89,29 +76,37 @@ public class ManagedVideoPlayerWidget extends BaseVideoPlayerWidget {
     protected void initialize() {
         if (initialized) return;
 
-        try {
-            videoPlayer = VideoPlayerCreator.createVideoPlayer();
-            videoPlayer.setRepeat(repeat);
-            videoPlayer.setPreparedListener(new VideoPlayer.VideoPreparedListener() {
-                @Override
-                public void onVideoPrepared(VideoPlayer videoPlayer, float width, float height) {
-                    invalidateHierarchy();
-                    // Start playback straight away.
-                    if (playOnPrepared && videoPlayer != null) {
-                        videoPlayer.play();
-                    }
-                }
-            });
-            videoPlayer.setOnCompletionListener(completionListener);
-            videoPlayer.prepare(videoFile);
-        } catch (Exception e) {
-            Gdx.app.error(TAG, "Error initializing video player.", e);
-            if (videoPlayer != null) {
-                videoPlayer.dispose();
-                videoPlayer = null;
+        videoPlayer = VideoPlayerCreator.createVideoPlayer();
+        videoPlayer.setRepeat(repeat);
+        videoPlayer.setListener(new VideoPlayer.VideoPlayerListener() {
+            @Override
+            public void onCompletionListener(VideoPlayer videoPlayer) {
+                VideoCompletionEvent event = Pools.obtain(VideoCompletionEvent.class);
+                event.initialize(videoPlayer);
+                fire(event);
+                Pools.free(event);
             }
-            return;
-        }
+
+            @Override
+            public void onVideoPrepared(VideoPlayer videoPlayer, float width, float height) {
+                invalidateHierarchy();
+                // Start playback straight away.
+                if (playOnPrepared && videoPlayer != null) {
+                    videoPlayer.play();
+                }
+            }
+
+            @Override
+            public void onVideoError(Exception e) {
+                Gdx.app.error(TAG, "Error initializing video player.", e);
+                if (videoPlayer != null) {
+                    videoPlayer.dispose();
+                    videoPlayer = null;
+                }
+                initialized = false;
+            }
+        });
+        videoPlayer.prepare(videoFile);
 
         initialized = true;
     }

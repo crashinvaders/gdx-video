@@ -22,14 +22,10 @@ public class TestVideoActor extends Stack implements Disposable {
     private final HostVideoPlayerWidget videoPlayerWidget;
 
     public TestVideoActor() {
-        try {
-            for (int i = 0; i < 3; i++) {
-                VideoPlayer videoPlayer = VideoPlayerCreator.createVideoPlayer();
-                videoPlayer.prepare(Gdx.files.internal("video" + i + ".webm"));
-                videoPlayers.add(videoPlayer);
-            }
-        } catch (VideoPlayerInitException | IOException e) {
-            throw new GdxRuntimeException(e);
+        for (int i = 0; i < 3; i++) {
+            VideoPlayer videoPlayer = VideoPlayerCreator.createVideoPlayer();
+            videoPlayer.prepare(Gdx.files.internal("video" + i + ".webm"));
+            videoPlayers.add(videoPlayer);
         }
 
         videoPlayerWidget = new HostVideoPlayerWidget();

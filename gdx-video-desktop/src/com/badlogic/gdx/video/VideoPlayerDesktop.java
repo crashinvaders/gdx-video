@@ -23,7 +23,6 @@ import com.badlogic.gdx.graphics.Pixmap.Format;
 import com.badlogic.gdx.graphics.glutils.PixmapTextureData;
 import com.badlogic.gdx.graphics.glutils.ShaderProgram;
 import com.badlogic.gdx.math.Matrix4;
-import com.badlogic.gdx.utils.GdxRuntimeException;
 import com.badlogic.gdx.video.VideoDecoder.VideoDecoderBuffers;
 
 import java.io.FileNotFoundException;
@@ -84,8 +83,7 @@ public class VideoPlayerDesktop implements VideoPlayer {
     private long timeBeforePause = 0;
     private boolean repeat = false;
 
-    private VideoPreparedListener prepareListener;
-    private CompletionListener completionListener;
+    private VideoPlayerListener listener;
 
     // Make sure the native libs are loaded.
     static {
@@ -112,9 +110,10 @@ public class VideoPlayerDesktop implements VideoPlayer {
     }
 
     @Override
-    public void prepare(FileHandle file) throws IOException {
+    public void prepare(FileHandle file) {
         if (!file.exists()) {
-            throw new FileNotFoundException("Could not find file: " + file.path());
+            reportError(new FileNotFoundException("Could not find file: " + file.path()));
+            return;
         }
 
         currentFile = file;
@@ -142,10 +141,8 @@ public class VideoPlayerDesktop implements VideoPlayer {
             } else {
                 throw new IOException("Error initializing decoder buffers.");
             }
-        } catch (IOException ioe) {
-            throw ioe;
         } catch (Exception e) {
-            Gdx.app.error(TAG, "Exception while trying to initialize the video player", e);
+            reportError(e);
             return;
         }
 
@@ -159,8 +156,8 @@ public class VideoPlayerDesktop implements VideoPlayer {
         texture = new Texture(textureData);
         texture.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
 
-        if (prepareListener != null) {
-            prepareListener.onVideoPrepared(this, currentVideoWidth, currentVideoHeight);
+        if (listener != null) {
+            listener.onVideoPrepared(this, currentVideoWidth, currentVideoHeight);
         }
     }
 
@@ -239,21 +236,17 @@ public class VideoPlayerDesktop implements VideoPlayer {
             } else {
                 // Repeat functionality.
                 if (repeat) {
-                    try {
-                        //TODO Find a way to repeat without recreating the buffers.
-                        prepare(currentFile);
-                        play();
-                        render(x, y, width, height);
-                    } catch (IOException e) {
-                        throw new GdxRuntimeException("Error repeating video playback", e);
-                    }
+                    //TODO Find a way to repeat without recreating the buffers.
+                    prepare(currentFile);
+                    play();
+                    render(x, y, width, height);
                 }
 
                 renderTexture();
 
                 if (playing) {
-                    if (completionListener != null) {
-                        completionListener.onCompletionListener(this);
+                    if (listener != null) {
+                        listener.onCompletionListener(this);
                     }
                     playing = false;
                 }
@@ -349,13 +342,13 @@ public class VideoPlayerDesktop implements VideoPlayer {
     }
 
     @Override
-    public void setPreparedListener(VideoPreparedListener listener) {
-        prepareListener = listener;
+    public void setListener(VideoPlayerListener listener) {
+        this.listener = listener;
     }
 
     @Override
-    public void setOnCompletionListener(CompletionListener listener) {
-        completionListener = listener;
+    public VideoPlayerListener getListener() {
+        return listener;
     }
 
     @Override
@@ -405,5 +398,12 @@ public class VideoPlayerDesktop implements VideoPlayer {
     @Override
     public FileHandle getVideoFileHandle() {
         return currentFile;
+    }
+
+    private void reportError(Exception exception) {
+        Gdx.app.error(TAG, "Video player error.", exception);
+        if (listener != null) {
+            listener.onVideoError(exception);
+        }
     }
 }

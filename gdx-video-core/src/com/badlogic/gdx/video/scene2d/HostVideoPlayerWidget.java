@@ -12,13 +12,23 @@ import com.badlogic.gdx.video.VideoPlayer;
  * after the {@link VideoPlayer} instance was provided. */
 public class HostVideoPlayerWidget extends BaseVideoPlayerWidget {
 
-    private final VideoPlayer.CompletionListener completionListener = new VideoPlayer.CompletionListener() {
+    private final VideoPlayer.VideoPlayerListener internalVideoListener = new VideoPlayer.VideoPlayerListener() {
         @Override
         public void onCompletionListener(VideoPlayer videoPlayer) {
             VideoCompletionEvent event = Pools.obtain(VideoCompletionEvent.class);
             event.initialize(videoPlayer);
             fire(event);
             Pools.free(event);
+        }
+
+        @Override
+        public void onVideoPrepared(VideoPlayer videoPlayer, float width, float height) {
+            // Do nothing.
+        }
+
+        @Override
+        public void onVideoError(Exception e) {
+            // Do nothing.
         }
     };
 
@@ -33,6 +43,11 @@ public class HostVideoPlayerWidget extends BaseVideoPlayerWidget {
     public VideoPlayer setVideoPlayer(VideoPlayer videoPlayer) {
         VideoPlayer oldVideoPlayer = this.videoPlayer;
         this.videoPlayer = videoPlayer;
+
+        // Clear out the lister if it was set from #setupCompletionEvents().
+        if (oldVideoPlayer != null && oldVideoPlayer.getListener() == internalVideoListener) {
+            oldVideoPlayer.setListener(null);
+        }
         return oldVideoPlayer;
     }
 
@@ -40,6 +55,6 @@ public class HostVideoPlayerWidget extends BaseVideoPlayerWidget {
     public void setupCompletionEvents() {
         if (videoPlayer == null) return;
 
-        videoPlayer.setOnCompletionListener(completionListener);
+        videoPlayer.setListener(internalVideoListener);
     }
 }
