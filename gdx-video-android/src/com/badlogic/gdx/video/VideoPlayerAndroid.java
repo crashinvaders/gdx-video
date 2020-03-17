@@ -121,82 +121,83 @@ public class VideoPlayerAndroid implements VideoPlayer, OnFrameAvailableListener
             return;
         }
         this.currentFile = file;
-
-        //TODO This call might need to be synced to Android UI thread.
-        player.reset();
         done = false;
+        prepared = false;
 
-        player.setOnPreparedListener(new OnPreparedListener() {
-            @Override
-            public void onPrepared(MediaPlayer mp) {
-                final int videoWidth = mp.getVideoWidth();
-                final int videoHeight = mp.getVideoHeight();
-                player.seekTo(0);
-
-                // This call happens on the Android's main thread. We need to sync.
-                Gdx.app.postRunnable(new Runnable() {
-                    @Override
-                    public void run() {
-                        prepared = true;
-
-                        if (listener != null) {
-                            listener.onVideoPrepared(VideoPlayerAndroid.this, videoWidth, videoHeight);
-                        }
-                    }
-                });
-            }
-        });
-
-        player.setOnErrorListener(new OnErrorListener() {
-            @Override
-            public boolean onError(MediaPlayer mp, final int what, final int extra) {
-                // This call happens on the Android's main thread. We need to sync.
-                Gdx.app.postRunnable(new Runnable() {
-                    @Override
-                    public void run() {
-                        done = true;
-                        reportError(new GdxRuntimeException("Native video player error: " + what + " " + extra));
-                    }
-                });
-                return true;
-            }
-        });
-
-        player.setOnCompletionListener(new OnCompletionListener() {
-            @Override
-            public void onCompletion(MediaPlayer mp) {
-                // This call happens on the Android's main thread. We need to sync.
-                Gdx.app.postRunnable(new Runnable() {
-                    @Override
-                    public void run() {
-                        done = true;
-                        if (listener != null) {
-                            listener.onVideoCompleted(VideoPlayerAndroid.this);
-                        }
-                    }
-                });
-            }
-        });
-
-        try {
-            if (file.type() == FileType.Classpath || (file.type() == FileType.Internal && !file.file().exists())) {
-                AssetManager assets = ((AndroidApplicationBase)Gdx.app).getContext().getAssets();
-                AssetFileDescriptor descriptor = assets.openFd(file.path());
-                player.setDataSource(descriptor.getFileDescriptor(), descriptor.getStartOffset(),
-                        descriptor.getLength());
-            } else {
-                player.setDataSource(file.file().getAbsolutePath());
-            }
-        } catch (IOException e) {
-            reportError(e);
-            done = true;
-            return;
-        }
-
-        //TODO These calls probably don't require any sync.
         androidThreadHandler.post(new Runnable() {
             @Override
             public void run() {
+
+                //TODO This call might need to be synced to Android UI thread.
+                player.reset();
+
+                player.setOnPreparedListener(new OnPreparedListener() {
+                    @Override
+                    public void onPrepared(MediaPlayer mp) {
+                        final int videoWidth = mp.getVideoWidth();
+                        final int videoHeight = mp.getVideoHeight();
+                        player.seekTo(0);
+
+                        // This call happens on the Android's main thread. We need to sync.
+                        Gdx.app.postRunnable(new Runnable() {
+                            @Override
+                            public void run() {
+                                prepared = true;
+
+                                if (listener != null) {
+                                    listener.onVideoPrepared(VideoPlayerAndroid.this, videoWidth, videoHeight);
+                                }
+                            }
+                        });
+                    }
+                });
+
+                player.setOnErrorListener(new OnErrorListener() {
+                    @Override
+                    public boolean onError(MediaPlayer mp, final int what, final int extra) {
+                        // This call happens on the Android's main thread. We need to sync.
+                        Gdx.app.postRunnable(new Runnable() {
+                            @Override
+                            public void run() {
+                                done = true;
+                                reportError(new GdxRuntimeException("Native video player error: " + what + " " + extra));
+                            }
+                        });
+                        return true;
+                    }
+                });
+
+                player.setOnCompletionListener(new OnCompletionListener() {
+                    @Override
+                    public void onCompletion(MediaPlayer mp) {
+                        // This call happens on the Android's main thread. We need to sync.
+                        Gdx.app.postRunnable(new Runnable() {
+                            @Override
+                            public void run() {
+                                done = true;
+                                if (listener != null) {
+                                    listener.onVideoCompleted(VideoPlayerAndroid.this);
+                                }
+                            }
+                        });
+                    }
+                });
+
+                try {
+                    if (file.type() == FileType.Classpath || (file.type() == FileType.Internal && !file.file().exists())) {
+                        AssetManager assets = ((AndroidApplicationBase) Gdx.app).getContext().getAssets();
+                        AssetFileDescriptor descriptor = assets.openFd(file.path());
+                        player.setDataSource(descriptor.getFileDescriptor(), descriptor.getStartOffset(),
+                                descriptor.getLength());
+                    } else {
+                        player.setDataSource(file.file().getAbsolutePath());
+                    }
+                } catch (IOException e) {
+                    reportError(e);
+                    done = true;
+                    return;
+                }
+
                 player.setSurface(new Surface(videoTexture));
                 player.prepareAsync();
             }
