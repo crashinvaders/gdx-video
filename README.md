@@ -2,7 +2,7 @@
 A LibGDX cross platform video rendering extension
 
 ## Status
-This repo is a fork of an old project with an aim on adapting it to the modern LibGDX usage.
+This repo is a fork of [an old project](https://github.com/libgdx/gdx-video) with an aim on adapting it to the modern LibGDX usage.
 As in the original library, the only native backends supported are Desktop (LWJGL3) and Android (min SDK version is 17).
 It's still under active development and not yet published anywhere as maven artifacts, however you can download beta jars from [release section](https://github.com/crashinvaders/gdx-video/releases).
 
